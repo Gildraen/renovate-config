@@ -28,6 +28,19 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\nGITHUB_MCP_IMAGE=\"[^:\"]+:(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Bump SemVer agentsRef and toolsRef options of the DX Dev Container Feature.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"ghcr\\.io/gildraen/dx/dx:[^\"]+\"\\s*:\\s*\\{[^{}]*\\}",
+        "\"(?<component>agents|tools)Ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\""
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver"
     }
   ]
 }

@@ -61,6 +61,43 @@ test('Remote Taskfiles ignore branches, SHA refs and unrelated repositories', ()
   }
 });
 
+const featureManager = preset.customManagers[2];
+
+function featureRefs(content) {
+  return [...content.matchAll(new RegExp(featureManager.matchStrings[0], 'g'))]
+    .flatMap((scope) => [...scope[0].matchAll(new RegExp(featureManager.matchStrings[1], 'g'))])
+    .map((match) => ({
+      depName: featureManager.depNameTemplate.replace('{{{component}}}', match.groups.component),
+      currentValue: match.groups.currentValue,
+    }));
+}
+
+test('Feature refs compose within DX options regardless of order', () => {
+  assert.equal(featureManager.matchStringsStrategy, 'recursive');
+  assert.deepEqual(featureRefs(JSON.stringify({
+    features: {
+      'ghcr.io/gildraen/dx/dx:1.2.0': {
+        toolsRef: '1.2.3',
+        agentsRef: 'v2.3.4-rc.1+build.2',
+      },
+      'ghcr.io/other/feature:1': { agentsRef: 'v9.9.9' },
+    },
+    agentsRef: 'v8.8.8',
+  })), [
+    { depName: 'Gildraen/dx-tools', currentValue: '1.2.3' },
+    { depName: 'Gildraen/dx-agents', currentValue: 'v2.3.4-rc.1+build.2' },
+  ]);
+});
+
+test('Feature refs ignore missing options, branches and SHA refs', () => {
+  for (const options of [{}, { agentsRef: 'main', toolsRef: 'feat/component-extraction' },
+    { agentsRef: 'a'.repeat(40), toolsRef: 'v01.2.3' }]) {
+    assert.deepEqual(featureRefs(JSON.stringify({
+      features: { 'ghcr.io/gildraen/dx/dx:1': options },
+    })), []);
+  }
+});
+
 test('MCP image extraction retains its annotation and version contract', () => {
   const match = new RegExp(preset.customManagers[1].matchStrings[0]).exec(
     '# renovate: datasource=docker depName=ghcr.io/github/github-mcp-server\n'
