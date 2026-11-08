@@ -3,5 +3,18 @@
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
     "ghcr.io/gildraen/dx/dx:1.2.0": {}
+  },
+  "containerEnv": {
+    "DX_AGENTS_HOME": "${containerWorkspaceFolder}/.devcontainer/components/agents"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "chat.agentFilesLocations": {
+          ".devcontainer/components/agents/agents": true,
+          ".agents/agents": true
+        }
+      }
+    }
   }
 }
