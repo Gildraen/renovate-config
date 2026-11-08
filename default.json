@@ -18,6 +18,14 @@
       ],
       "datasourceTemplate": "github-tags",
       "depNameTemplate": "Gildraen/dx"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump the GitHub MCP server image pinned in versioned dx-mcp launchers.",
+      "fileMatch": ["(^|/)dx-mcp$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\nGITHUB_MCP_IMAGE=\"[^:\"]+:(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
+      ]
     }
   ]
 }

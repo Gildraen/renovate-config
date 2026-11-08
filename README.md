@@ -2,7 +2,8 @@
 
 Shared Renovate configuration for Gildraen repositories. The preset provides
 recommended rules, GitHub Actions digest pinning, Dev Container updates and
-updates to versioned DX Remote Taskfile references.
+updates to versioned DX Remote Taskfile references and GitHub MCP images in
+versioned `dx-mcp` launchers.
 
 Consumer configuration:
 
