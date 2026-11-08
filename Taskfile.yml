@@ -1,0 +1,11 @@
+version: '3'
+
+tasks:
+  validate:
+    desc: Validate the preset and repository configuration with Renovate
+    cmds:
+      - npx --yes --package renovate@44.222.4 renovate-config-validator --strict --no-global default.json renovate.json
+  test:
+    desc: Test custom dependency extraction
+    cmds:
+      - node --test test/*.test.mjs
