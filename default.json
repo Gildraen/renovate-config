@@ -8,24 +8,56 @@
   "devcontainer": {
     "enabled": true
   },
+  "git-submodules": {
+    "enabled": true
+  },
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Bump the pinned Gildraen/dx tag used by Remote Taskfile includes (no native Task manager exists).",
-      "fileMatch": ["(^|/)Taskfile\\.ya?ml$"],
+      "description": "Bump pinned Gildraen DX and tools tags used by Remote Taskfile includes (no native Task manager exists).",
+      "managerFilePatterns": ["/(^|/)Taskfile\\.ya?ml$/"],
       "matchStrings": [
-        "Gildraen/dx\\.git//[^\"'\\s]+\\?ref=(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+        "(?:^|[\"'\\s])https://github\\.com/(?<depName>Gildraen/dx(?:-tools)?)\\.git//[^\"'\\s?#]+\\?ref=(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?:[\"'\\s]|$)",
+        "(?:^|[\"'\\s])https://github\\.com/(?<depName>Gildraen/dx(?:-tools)?)/raw/(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)/taskfiles/[^\"'\\s?#]+\\.ya?ml(?:[\"'\\s]|$)",
+        "(?:^|[\"'\\s])https://raw\\.githubusercontent\\.com/(?<depName>Gildraen/dx(?:-tools)?)/(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)/taskfiles/[^\"'\\s?#]+\\.ya?ml(?:[\"'\\s]|$)"
       ],
       "datasourceTemplate": "github-tags",
-      "depNameTemplate": "Gildraen/dx"
+      "versioningTemplate": "semver"
     },
     {
       "customType": "regex",
       "description": "Bump the GitHub MCP server image pinned in versioned dx-mcp launchers.",
-      "fileMatch": ["(^|/)dx-mcp$"],
+      "managerFilePatterns": ["/(^|/)dx-mcp$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\nGITHUB_MCP_IMAGE=\"[^:\"]+:(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Bump SemVer agentsRef and toolsRef options of the DX Dev Container Feature.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"ghcr\\.io/gildraen/dx/dx:[^\"]+\"\\s*:\\s*\\{[^{}]*\\}",
+        "\"(?<component>agents|tools)Ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\""
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump SemVer agentsRef and toolsRef defaults in the DX Dev Container Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
+        "\"(?<component>agents|tools)Ref\"\\s*:\\s*\\{[^{}]*\\}",
+        "\"default\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\""
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver"
     }
   ]
 }
