@@ -8,6 +8,9 @@
   "devcontainer": {
     "enabled": true
   },
+  "git-submodules": {
+    "enabled": true
+  },
   "customManagers": [
     {
       "customType": "regex",
@@ -37,6 +40,20 @@
       "matchStrings": [
         "\"ghcr\\.io/gildraen/dx/dx:[^\"]+\"\\s*:\\s*\\{[^{}]*\\}",
         "\"(?<component>agents|tools)Ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\""
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump SemVer agentsRef and toolsRef defaults in the DX Dev Container Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
+        "\"(?<component>agents|tools)Ref\"\\s*:\\s*\\{[^{}]*\\}",
+        "\"default\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\""
       ],
       "datasourceTemplate": "github-tags",
       "depNameTemplate": "Gildraen/dx-{{{component}}}",
