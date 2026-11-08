@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Shared Gildraen DX Renovate preset. Consumers extend this from their own renovate.json.",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "devcontainer": {
+    "enabled": true
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Bump the pinned Gildraen/dx tag used by Remote Taskfile includes (no native Task manager exists).",
+      "fileMatch": ["(^|/)Taskfile\\.ya?ml$"],
+      "matchStrings": [
+        "Gildraen/dx\\.git//[^\"'\\s]+\\?ref=(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx"
+    }
+  ]
+}

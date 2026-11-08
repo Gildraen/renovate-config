@@ -1,0 +1,7 @@
+{
+  "name": "Gildraen Renovate configuration",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/gildraen/dx/dx:1.2.0": {}
+  }
+}
