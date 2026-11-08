@@ -1,0 +1,35 @@
+{
+  "features": {
+    "ghcr.io/devcontainers-extra/features/apt-get-packages:1": {
+      "version": "1.0.8",
+      "resolved": "ghcr.io/devcontainers-extra/features/apt-get-packages@sha256:776fa11c30c50fa91d5e1bf050444b0f130827457109c349db92e8e126b750ec",
+      "integrity": "sha256:776fa11c30c50fa91d5e1bf050444b0f130827457109c349db92e8e126b750ec"
+    },
+    "ghcr.io/devcontainers-extra/features/go-task:1": {
+      "version": "1.0.6",
+      "resolved": "ghcr.io/devcontainers-extra/features/go-task@sha256:4d1db153919976cadd3209ca05d655a761a01707767716994dad677b4538dc1b",
+      "integrity": "sha256:4d1db153919976cadd3209ca05d655a761a01707767716994dad677b4538dc1b"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "1.1.3",
+      "resolved": "ghcr.io/devcontainers/features/github-cli@sha256:bd7ab48a832228f633239277552c30b353867fef2e5b037e064b4e64f0b843f2",
+      "integrity": "sha256:bd7ab48a832228f633239277552c30b353867fef2e5b037e064b4e64f0b843f2"
+    },
+    "ghcr.io/devcontainers/features/node:2": {
+      "version": "2.1.1",
+      "resolved": "ghcr.io/devcontainers/features/node@sha256:2a19d3b0b3879437637cfd292eb29fee0afcfbe6364e33db9afc4f80c5c1f956",
+      "integrity": "sha256:2a19d3b0b3879437637cfd292eb29fee0afcfbe6364e33db9afc4f80c5c1f956"
+    },
+    "ghcr.io/gildraen/dx/dx:1.2.0": {
+      "version": "1.2.0",
+      "resolved": "ghcr.io/gildraen/dx/dx@sha256:340db147f92b68e356e7462a3a9a8d98610826b7f79b5c980e9be6228200669b",
+      "integrity": "sha256:340db147f92b68e356e7462a3a9a8d98610826b7f79b5c980e9be6228200669b",
+      "dependsOn": [
+        "ghcr.io/devcontainers/features/node:2",
+        "ghcr.io/devcontainers/features/github-cli:1",
+        "ghcr.io/devcontainers-extra/features/go-task:1",
+        "ghcr.io/devcontainers-extra/features/apt-get-packages:1"
+      ]
+    }
+  }
+}
