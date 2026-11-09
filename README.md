@@ -1,8 +1,8 @@
 # renovate-config
 
 Shared Renovate configuration for Gildraen repositories. The preset provides
-recommended rules, GitHub Actions digest pinning, Dev Container updates and
-updates to versioned DX Remote Taskfile references and GitHub MCP images in
+recommended rules, GitHub Actions version updates without digest pinning,
+Dev Container updates and updates to versioned DX Remote Taskfile references and GitHub MCP images in
 versioned `dx-mcp` launchers. Remote Taskfile references retain their repository:
 `Gildraen/dx` and `Gildraen/dx-tools` are both supported.
 
@@ -11,29 +11,31 @@ Native HTTP Remote Taskfile includes use:
 ```yaml
 includes:
   base:
-    taskfile: https://github.com/Gildraen/dx-tools/raw/<ref>/taskfiles/base.yml
+    taskfile: https://github.com/Gildraen/dx-tools/raw/v0.1.0-rc.1/taskfiles/base.yml
 ```
 
 This host keeps `TASK_REMOTE_TRUSTED_HOSTS=github.com` unchanged. The preset also
 recognizes `https://raw.githubusercontent.com/Gildraen/dx-tools/<ref>/taskfiles/base.yml`
 and legacy `https://github.com/Gildraen/dx-tools.git//taskfiles/base.yml?ref=<ref>`
 includes, for either supported repository. SemVer references are updated;
-branches and SHA references are not matched. Task 3.53.1 does not resolve commit
-SHAs in the legacy Git URL format; SHA-pinned includes use native HTTP.
+branches and SHA references are not matched. Task 3.53.1 consumers use the direct
+HTTP URL above with the fixed version tag.
 
 The preset also updates SemVer `agentsRef` and `toolsRef` options inside the
 `ghcr.io/gildraen/dx/dx:*` Dev Container Feature and their `default` fields in
 the `.devcontainer/src/dx/devcontainer-feature.json` install manifest. Branch
-and commit SHA option values are not matched by these custom managers. The pilot
-retains SHA pins without production tags. Native Git submodule management
-updates pinned checkout SHAs from `.gitmodules`; GitHub Actions and reusable
-workflow references use Renovate's native GitHub Actions manager.
+and commit SHA option values are not matched by these custom managers. Native
+Git submodule updates are disabled: the native manager follows branches or
+`HEAD`, not the component version tags. Select a new version tag explicitly
+and record its resolved gitlink with the corresponding component version.
+GitHub Actions and reusable workflow references use Renovate's native GitHub Actions manager.
 
-Consumer configuration:
+The candidate preset version is `v0.1.0-rc.1`, a prerelease, not a stable release.
+Consumer configuration selects that tag, not a floating branch:
 
 ```json
 {
-  "extends": ["github>Gildraen/renovate-config#feat/component-extraction"]
+  "extends": ["github>Gildraen/renovate-config#v0.1.0-rc.1"]
 }
 ```
 
@@ -50,6 +52,14 @@ the recorded checkouts with:
 git submodule update --init --recursive
 ```
 
+To select the candidate agents version, check out its tag and record the
+resolved commit in the parent repository's gitlink:
+
+```sh
+git -C .devcontainer/components/agents checkout --detach v0.1.0-rc.1
+git add .devcontainer/components/agents
+```
+
 [AGENTS.md](AGENTS.md) loads shared rules through `DX_AGENTS_HOME`, falling back
 to that checkout when the variable is absent. The Dev Container sets this path
 and exposes shared and project-local agent locations to VS Code.
@@ -63,6 +73,6 @@ task test
 
 The native GitHub Actions workflow runs the same validator and tests. The
 validator checks configuration syntax and rules, not resolution of the top-level
-GitHub preset. A Renovate run resolves [renovate.json](renovate.json) from the
-published branch; the local [default.json](default.json) is not a substitute for
-that remote preset.
+GitHub preset. A Renovate run reads [renovate.json](renovate.json) and resolves
+the preset from the selected version tag; the local [default.json](default.json)
+is not a substitute for that remote preset.

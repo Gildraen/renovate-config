@@ -1,4 +1,3 @@
 [submodule ".devcontainer/components/agents"]
 	path = .devcontainer/components/agents
 	url = https://github.com/Gildraen/dx-agents.git
-	branch = feat/component-extraction

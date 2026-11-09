@@ -2,15 +2,20 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": "Shared Gildraen DX Renovate preset. Consumers extend this from their own renovate.json.",
   "extends": [
-    "config:recommended",
-    "helpers:pinGitHubActionDigests"
+    "config:recommended"
   ],
   "devcontainer": {
     "enabled": true
   },
   "git-submodules": {
-    "enabled": true
+    "enabled": false
   },
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "pinDigests": false
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
