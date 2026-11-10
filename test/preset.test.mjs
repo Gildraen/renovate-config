@@ -3,7 +3,37 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const preset = JSON.parse(readFileSync(new URL('../default.json', import.meta.url)));
-const taskManager = preset.customManagers[0];
+
+function managerFor(file) {
+  return preset.customManagers.find((manager) =>
+    manager.managerFilePatterns.some((pattern) => new RegExp(pattern.slice(1, -1)).test(file)));
+}
+
+const taskManager = managerFor('Taskfile.yml');
+const mcpManager = managerFor('bin/dx-mcp');
+
+test('Managers select supported files and preserve Task lookup settings', () => {
+  for (const file of ['Taskfile.yml', 'Taskfile.yaml', 'nested/Taskfile.yml']) {
+    assert.equal(managerFor(file), taskManager);
+  }
+  for (const file of ['OtherTaskfile.yml', 'Taskfile.yml.bak', 'bin/dx-mcp.bak']) {
+    assert.equal(managerFor(file), undefined);
+  }
+  const featureManager = managerFor('.devcontainer/devcontainer.json');
+  assert.ok(featureManager, 'DX Feature options manager is missing');
+  for (const file of ['.devcontainer.json', '.devcontainer/devcontainer.json',
+    '.devcontainer/python/devcontainer.json']) {
+    assert.equal(managerFor(file), featureManager);
+  }
+  for (const file of ['devcontainer.json', '.devcontainer/other.json']) {
+    assert.equal(managerFor(file), undefined);
+  }
+  assert.equal(taskManager.datasourceTemplate, 'github-tags');
+  assert.equal(taskManager.versioningTemplate, 'semver');
+  assert.equal(taskManager.depNameTemplate, undefined);
+  assert.equal(featureManager.datasourceTemplate, 'github-tags');
+  assert.equal(featureManager.versioningTemplate, 'semver');
+});
 
 function taskRefs(content) {
   return taskManager.matchStrings.flatMap((pattern) =>
@@ -21,17 +51,42 @@ function taskUrls(depName, ref) {
   ];
 }
 
+function featureRefs(content, file) {
+  const manager = managerFor(file);
+  if (!manager) return [];
+  const [featurePattern, refPattern] = manager.matchStrings.map((pattern) => new RegExp(pattern, 'g'));
+  return [...content.matchAll(featurePattern)].flatMap((feature) =>
+    [...feature[0].matchAll(refPattern)].map((match) => ({
+      depName: manager.depNameTemplate.replace('{{{component}}}', match.groups.component),
+      currentValue: match.groups.currentValue,
+    })));
+}
+
 test('Remote Taskfiles preserve the repository named by each include', () => {
   for (const depName of ['Gildraen/dx', 'Gildraen/dx-tools']) {
     for (const currentValue of ['v1.2.3', '1.2.3', 'v2.3.4-rc.1+build.2']) {
       for (const url of taskUrls(depName, currentValue)) {
-        for (const content of [url, `taskfile: "${url}"\n`, `taskfile: '${url}'\n`]) {
+        for (const content of [
+          url,
+          `taskfile: "${url}"\n`,
+          `taskfile: '${url}'\n`,
+          `includes: {shared: ${url}}`,
+          `includes: {shared: {taskfile: ${url}, optional: true}}`,
+        ]) {
           assert.deepEqual(taskRefs(content), [{ depName, currentValue }], content);
         }
       }
     }
   }
-  assert.equal(taskManager.depNameTemplate, undefined);
+});
+
+test('Remote Taskfiles recognize multiple HTTPS includes in one mapping', () => {
+  const [first] = taskUrls('Gildraen/dx', 'v1.2.3');
+  const [second] = taskUrls('Gildraen/dx-tools', 'v2.3.4');
+  assert.deepEqual(taskRefs(`includes: {one: ${first}, two: ${second}}`), [
+    { depName: 'Gildraen/dx', currentValue: 'v1.2.3' },
+    { depName: 'Gildraen/dx-tools', currentValue: 'v2.3.4' },
+  ]);
 });
 
 test('Remote Taskfiles ignore branches, SHA refs and unrelated repositories', () => {
@@ -48,7 +103,9 @@ test('Remote Taskfiles ignore branches, SHA refs and unrelated repositories', ()
   }
   for (const url of taskUrls('Gildraen/dx-tools', 'v1.2.3')) {
     for (const invalid of [url.replace('https://', 'http://'),
+      url.replace('https://', 'git@'),
       url.replace('.com/', '.com.evil/'), `https://example.com/${url}`,
+      `https://example.com/list,${url}`,
       `${url}?extra=true`, `${url}#fragment`]) {
       assert.deepEqual(taskRefs(invalid), [], invalid);
     }
@@ -61,40 +118,38 @@ test('Remote Taskfiles ignore branches, SHA refs and unrelated repositories', ()
   }
 });
 
-const featureManager = preset.customManagers[2];
-
-function featureRefs(content) {
-  return [...content.matchAll(new RegExp(featureManager.matchStrings[0], 'g'))]
-    .flatMap((scope) => [...scope[0].matchAll(new RegExp(featureManager.matchStrings[1], 'g'))])
-    .map((match) => ({
-      depName: featureManager.depNameTemplate.replace('{{{component}}}', match.groups.component),
-      currentValue: match.groups.currentValue,
-    }));
-}
-
-test('Feature refs compose within DX options regardless of order', () => {
-  assert.equal(featureManager.matchStringsStrategy, 'recursive');
-  assert.deepEqual(featureRefs(JSON.stringify({
+test('Feature component versions are selected from standard Dev Container files', () => {
+  const configuration = JSON.stringify({
     features: {
       'ghcr.io/gildraen/dx/dx:1.2.0': {
-        toolsRef: '1.2.3',
-        agentsRef: 'v2.3.4-rc.1+build.2',
+        toolsVersion: '1.2.3',
+        agentsVersion: 'v2.3.4-rc.1+build.2',
       },
-      'ghcr.io/other/feature:1': { agentsRef: 'v9.9.9' },
+      'ghcr.io/other/feature:1': { agentsVersion: 'v9.9.9' },
     },
-    agentsRef: 'v8.8.8',
-  })), [
+    agentsVersion: 'v8.8.8',
+  });
+  const expected = [
     { depName: 'Gildraen/dx-tools', currentValue: '1.2.3' },
     { depName: 'Gildraen/dx-agents', currentValue: 'v2.3.4-rc.1+build.2' },
-  ]);
+  ];
+  for (const file of ['.devcontainer.json', '.devcontainer/devcontainer.json',
+    '.devcontainer/python/devcontainer.json']) {
+    assert.deepEqual(featureRefs(configuration, file), expected, file);
+  }
+  for (const file of ['devcontainer.json', '.devcontainer/other.json']) {
+    assert.deepEqual(featureRefs(configuration, file), [], file);
+  }
 });
 
-test('Feature refs ignore missing options, branches and SHA refs', () => {
-  for (const options of [{}, { agentsRef: 'main', toolsRef: 'feat/component-extraction' },
-    { agentsRef: 'a'.repeat(40), toolsRef: 'v01.2.3' }]) {
-    assert.deepEqual(featureRefs(JSON.stringify({
-      features: { 'ghcr.io/gildraen/dx/dx:1': options },
-    })), []);
+test('Feature component versions ignore non-DX Features and non-SemVer values', () => {
+  for (const feature of [
+    { 'ghcr.io/other/feature:1': { agentsVersion: 'v1.2.3', toolsVersion: 'v1.2.3' } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'main', toolsVersion: 'a'.repeat(40) } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v01.2.3', toolsVersion: '1.2.3-' } },
+  ]) {
+    assert.deepEqual(featureRefs(JSON.stringify({ features: feature }),
+      '.devcontainer/devcontainer.json'), []);
   }
 });
 
@@ -115,7 +170,7 @@ function featureDefaults(content) {
   }));
 }
 
-test('Feature manifest defaults retain the component repository and option scope', () => {
+test('Feature manifest version defaults retain the component repository and option scope', () => {
   assert.equal(featureDefaultsManager.matchStringsStrategy, 'recursive');
   const filePattern = new RegExp(featureDefaultsManager.managerFilePatterns[0].slice(1, -1));
   assert.equal(filePattern.test('.devcontainer/src/dx/devcontainer-feature.json'), true);
@@ -124,13 +179,13 @@ test('Feature manifest defaults retain the component repository and option scope
     assert.equal(filePattern.test(path), false, path);
   }
   for (const options of [
-    { agentsRef: { type: 'string', default: 'v1.2.3', description: 'agents' },
-      toolsRef: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' } },
-    { toolsRef: { default: '2.3.4-rc.1+build.2' }, agentsRef: { default: 'v1.2.3' } },
+    { agentsVersion: { type: 'string', default: 'v1.2.3', description: 'agents' },
+      toolsVersion: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' } },
+    { toolsVersion: { default: '2.3.4-rc.1+build.2' }, agentsVersion: { default: 'v1.2.3' } },
   ]) {
     assert.deepEqual(featureDefaults(JSON.stringify({
       options: { ...options, otherRef: { default: 'v9.9.9' } },
-      agentsRef: { default: 'v8.8.8' },
+      agentsVersion: { default: 'v8.8.8' },
     })).sort((left, right) => left.depName.localeCompare(right.depName)), [
       { depName: 'Gildraen/dx-agents', currentValue: 'v1.2.3' },
       { depName: 'Gildraen/dx-tools', currentValue: '2.3.4-rc.1+build.2' },
@@ -138,21 +193,21 @@ test('Feature manifest defaults retain the component repository and option scope
   }
 });
 
-test('Feature manifest defaults ignore SHA pins, branches and non-default values', () => {
+test('Feature manifest version defaults ignore SHA pins, branches and non-default values', () => {
   for (const value of ['a'.repeat(40), 'main', 'feat/component-extraction', 'v01.2.3', 'v1.2.3-']) {
     assert.deepEqual(featureDefaults(JSON.stringify({ options: {
-      agentsRef: { default: value, description: 'v9.9.9' },
-      toolsRef: { default: value, description: 'v9.9.9' },
+      agentsVersion: { default: value, description: 'v9.9.9' },
+      toolsVersion: { default: value, description: 'v9.9.9' },
     } })), []);
   }
-  for (const manifest of [{}, { agentsRef: { default: 'v1.2.3' } },
-    { options: { agentsRef: { description: 'v1.2.3' }, toolsRef: 'v2.3.4' } }]) {
+  for (const manifest of [{}, { agentsVersion: { default: 'v1.2.3' } },
+    { options: { agentsVersion: { description: 'v1.2.3' }, toolsVersion: 'v2.3.4' } }]) {
     assert.deepEqual(featureDefaults(JSON.stringify(manifest)), []);
   }
 });
 
 test('MCP image extraction retains its annotation and version contract', () => {
-  const match = new RegExp(preset.customManagers[1].matchStrings[0]).exec(
+  const match = new RegExp(mcpManager.matchStrings[0]).exec(
     '# renovate: datasource=docker depName=ghcr.io/github/github-mcp-server\n'
     + 'GITHUB_MCP_IMAGE="ghcr.io/github/github-mcp-server:v0.24.0"',
   );
