@@ -8,9 +8,6 @@
   "devcontainer": {
     "enabled": true
   },
-  "git-submodules": {
-    "enabled": true
-  },
   "customManagers": [
     {
       "customType": "regex",
