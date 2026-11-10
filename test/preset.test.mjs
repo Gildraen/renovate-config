@@ -19,9 +19,20 @@ test('Managers select supported files and preserve Task lookup settings', () => 
   for (const file of ['OtherTaskfile.yml', 'Taskfile.yml.bak', 'bin/dx-mcp.bak']) {
     assert.equal(managerFor(file), undefined);
   }
+  const featureManager = managerFor('.devcontainer/devcontainer.json');
+  assert.ok(featureManager, 'DX Feature options manager is missing');
+  for (const file of ['.devcontainer.json', '.devcontainer/devcontainer.json',
+    '.devcontainer/python/devcontainer.json']) {
+    assert.equal(managerFor(file), featureManager);
+  }
+  for (const file of ['devcontainer.json', '.devcontainer/other.json']) {
+    assert.equal(managerFor(file), undefined);
+  }
   assert.equal(taskManager.datasourceTemplate, 'github-tags');
   assert.equal(taskManager.versioningTemplate, 'semver');
   assert.equal(taskManager.depNameTemplate, undefined);
+  assert.equal(featureManager.datasourceTemplate, 'github-tags');
+  assert.equal(featureManager.versioningTemplate, 'semver');
 });
 
 function taskRefs(content) {
@@ -38,6 +49,17 @@ function taskUrls(depName, ref) {
     `https://github.com/${depName}/raw/${ref}/taskfiles/base.yml`,
     `https://raw.githubusercontent.com/${depName}/${ref}/taskfiles/base.yaml`,
   ];
+}
+
+function featureRefs(content, file) {
+  const manager = managerFor(file);
+  if (!manager) return [];
+  const [featurePattern, refPattern] = manager.matchStrings.map((pattern) => new RegExp(pattern, 'g'));
+  return [...content.matchAll(featurePattern)].flatMap((feature) =>
+    [...feature[0].matchAll(refPattern)].map((match) => ({
+      depName: manager.depNameTemplate.replace('{{{component}}}', match.groups.component),
+      currentValue: match.groups.currentValue,
+    })));
 }
 
 test('Remote Taskfiles preserve the repository named by each include', () => {
@@ -93,6 +115,41 @@ test('Remote Taskfiles ignore branches, SHA refs and unrelated repositories', ()
       url.replace('/raw/', '/blob/')]) {
       if (invalid !== url) assert.deepEqual(taskRefs(invalid), [], invalid);
     }
+  }
+});
+
+test('Feature component versions are selected from standard Dev Container files', () => {
+  const configuration = JSON.stringify({
+    features: {
+      'ghcr.io/gildraen/dx/dx:1.2.0': {
+        toolsVersion: '1.2.3',
+        agentsVersion: 'v2.3.4-rc.1+build.2',
+      },
+      'ghcr.io/other/feature:1': { agentsVersion: 'v9.9.9' },
+    },
+    agentsVersion: 'v8.8.8',
+  });
+  const expected = [
+    { depName: 'Gildraen/dx-tools', currentValue: '1.2.3' },
+    { depName: 'Gildraen/dx-agents', currentValue: 'v2.3.4-rc.1+build.2' },
+  ];
+  for (const file of ['.devcontainer.json', '.devcontainer/devcontainer.json',
+    '.devcontainer/python/devcontainer.json']) {
+    assert.deepEqual(featureRefs(configuration, file), expected, file);
+  }
+  for (const file of ['devcontainer.json', '.devcontainer/other.json']) {
+    assert.deepEqual(featureRefs(configuration, file), [], file);
+  }
+});
+
+test('Feature component versions ignore non-DX Features and non-SemVer values', () => {
+  for (const feature of [
+    { 'ghcr.io/other/feature:1': { agentsVersion: 'v1.2.3', toolsVersion: 'v1.2.3' } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'main', toolsVersion: 'a'.repeat(40) } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v01.2.3', toolsVersion: '1.2.3-' } },
+  ]) {
+    assert.deepEqual(featureRefs(JSON.stringify({ features: feature }),
+      '.devcontainer/devcontainer.json'), []);
   }
 });
 
