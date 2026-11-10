@@ -21,7 +21,7 @@ includes, for either supported repository. SemVer references are updated;
 branches and SHA references are not matched. Task 3.53.1 consumers use the direct
 HTTP URL above with the fixed version tag.
 
-The preset also updates SemVer `agentsVersion` and `toolsVersion` options inside the
+The preset also updates SemVer `agentsVersion` and `toolsVersion` options inside
 `ghcr.io/gildraen/dx/dx:*` Dev Container Feature and their `default` fields in
 the `.devcontainer/src/dx/devcontainer-feature.json` install manifest. Branch
 and commit SHA option values are not matched by these custom managers. Native
