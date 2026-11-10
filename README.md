@@ -21,7 +21,7 @@ includes, for either supported repository. SemVer references are updated;
 branches and SHA references are not matched. Task 3.53.1 does not resolve commit
 SHAs in the legacy Git URL format; SHA-pinned includes use native HTTP.
 
-The preset also updates SemVer `agentsRef` and `toolsRef` options inside the
+The preset also updates SemVer `agentsVersion` and `toolsVersion` options inside the
 `ghcr.io/gildraen/dx/dx:*` Dev Container Feature and their `default` fields in
 the `.devcontainer/src/dx/devcontainer-feature.json` install manifest. Branch
 and commit SHA option values are not matched by these custom managers. The pilot
