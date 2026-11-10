@@ -170,7 +170,7 @@ function featureDefaults(content) {
   }));
 }
 
-test('Feature manifest defaults retain the component repository and option scope', () => {
+test('Feature manifest version defaults retain the component repository and option scope', () => {
   assert.equal(featureDefaultsManager.matchStringsStrategy, 'recursive');
   const filePattern = new RegExp(featureDefaultsManager.managerFilePatterns[0].slice(1, -1));
   assert.equal(filePattern.test('.devcontainer/src/dx/devcontainer-feature.json'), true);
@@ -179,13 +179,13 @@ test('Feature manifest defaults retain the component repository and option scope
     assert.equal(filePattern.test(path), false, path);
   }
   for (const options of [
-    { agentsRef: { type: 'string', default: 'v1.2.3', description: 'agents' },
-      toolsRef: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' } },
-    { toolsRef: { default: '2.3.4-rc.1+build.2' }, agentsRef: { default: 'v1.2.3' } },
+    { agentsVersion: { type: 'string', default: 'v1.2.3', description: 'agents' },
+      toolsVersion: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' } },
+    { toolsVersion: { default: '2.3.4-rc.1+build.2' }, agentsVersion: { default: 'v1.2.3' } },
   ]) {
     assert.deepEqual(featureDefaults(JSON.stringify({
       options: { ...options, otherRef: { default: 'v9.9.9' } },
-      agentsRef: { default: 'v8.8.8' },
+      agentsVersion: { default: 'v8.8.8' },
     })).sort((left, right) => left.depName.localeCompare(right.depName)), [
       { depName: 'Gildraen/dx-agents', currentValue: 'v1.2.3' },
       { depName: 'Gildraen/dx-tools', currentValue: '2.3.4-rc.1+build.2' },
@@ -193,15 +193,15 @@ test('Feature manifest defaults retain the component repository and option scope
   }
 });
 
-test('Feature manifest defaults ignore SHA pins, branches and non-default values', () => {
+test('Feature manifest version defaults ignore SHA pins, branches and non-default values', () => {
   for (const value of ['a'.repeat(40), 'main', 'feat/component-extraction', 'v01.2.3', 'v1.2.3-']) {
     assert.deepEqual(featureDefaults(JSON.stringify({ options: {
-      agentsRef: { default: value, description: 'v9.9.9' },
-      toolsRef: { default: value, description: 'v9.9.9' },
+      agentsVersion: { default: value, description: 'v9.9.9' },
+      toolsVersion: { default: value, description: 'v9.9.9' },
     } })), []);
   }
-  for (const manifest of [{}, { agentsRef: { default: 'v1.2.3' } },
-    { options: { agentsRef: { description: 'v1.2.3' }, toolsRef: 'v2.3.4' } }]) {
+  for (const manifest of [{}, { agentsVersion: { default: 'v1.2.3' } },
+    { options: { agentsVersion: { description: 'v1.2.3' }, toolsVersion: 'v2.3.4' } }]) {
     assert.deepEqual(featureDefaults(JSON.stringify(manifest)), []);
   }
 });
