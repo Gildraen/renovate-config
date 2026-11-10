@@ -31,7 +31,7 @@
     },
     {
       "customType": "regex",
-      "description": "Bump SemVer component refs in DX Dev Container Feature options.",
+      "description": "Bump SemVer component versions in DX Dev Container Feature options.",
       "managerFilePatterns": [
         "/(^|/)\\.devcontainer\\.json$/",
         "/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/"
@@ -39,7 +39,7 @@
       "matchStringsStrategy": "recursive",
       "matchStrings": [
         "\"ghcr\\.io/gildraen/dx/dx:[^\"]+\"\\s*:\\s*\\{[^{}]*\\}",
-        "\"(?<component>agents|tools)Ref\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\""
+        "\"(?<component>agents|tools)Version\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\""
       ],
       "datasourceTemplate": "github-tags",
       "depNameTemplate": "Gildraen/dx-{{{component}}}",

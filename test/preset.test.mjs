@@ -118,16 +118,16 @@ test('Remote Taskfiles ignore branches, SHA refs and unrelated repositories', ()
   }
 });
 
-test('Feature component refs are selected from standard Dev Container files', () => {
+test('Feature component versions are selected from standard Dev Container files', () => {
   const configuration = JSON.stringify({
     features: {
       'ghcr.io/gildraen/dx/dx:1.2.0': {
-        toolsRef: '1.2.3',
-        agentsRef: 'v2.3.4-rc.1+build.2',
+        toolsVersion: '1.2.3',
+        agentsVersion: 'v2.3.4-rc.1+build.2',
       },
-      'ghcr.io/other/feature:1': { agentsRef: 'v9.9.9' },
+      'ghcr.io/other/feature:1': { agentsVersion: 'v9.9.9' },
     },
-    agentsRef: 'v8.8.8',
+    agentsVersion: 'v8.8.8',
   });
   const expected = [
     { depName: 'Gildraen/dx-tools', currentValue: '1.2.3' },
@@ -142,11 +142,11 @@ test('Feature component refs are selected from standard Dev Container files', ()
   }
 });
 
-test('Feature component refs ignore non-DX Features and non-SemVer values', () => {
+test('Feature component versions ignore non-DX Features and non-SemVer values', () => {
   for (const feature of [
-    { 'ghcr.io/other/feature:1': { agentsRef: 'v1.2.3', toolsRef: 'v1.2.3' } },
-    { 'ghcr.io/gildraen/dx/dx:1': { agentsRef: 'main', toolsRef: 'a'.repeat(40) } },
-    { 'ghcr.io/gildraen/dx/dx:1': { agentsRef: 'v01.2.3', toolsRef: '1.2.3-' } },
+    { 'ghcr.io/other/feature:1': { agentsVersion: 'v1.2.3', toolsVersion: 'v1.2.3' } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'main', toolsVersion: 'a'.repeat(40) } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v01.2.3', toolsVersion: '1.2.3-' } },
   ]) {
     assert.deepEqual(featureRefs(JSON.stringify({ features: feature }),
       '.devcontainer/devcontainer.json'), []);
