@@ -33,6 +33,15 @@ test('Managers select supported files and preserve Task lookup settings', () => 
   assert.equal(taskManager.depNameTemplate, undefined);
   assert.equal(featureManager.datasourceTemplate, 'github-tags');
   assert.equal(featureManager.versioningTemplate, 'semver');
+  assert.ok(featureManager.autoReplaceStringTemplate.includes('{{{newDigest}}}'));
+});
+
+test('DX component digest pinning is limited to matching Feature configuration files', () => {
+  const rule = preset.packageRules.find((candidate) => candidate.pinDigests === true);
+  assert.ok(rule);
+  assert.deepEqual(rule.matchPackageNames, ['Gildraen/dx-agents', 'Gildraen/dx-tools']);
+  assert.deepEqual(rule.matchDatasources, ['github-tags']);
+  assert.equal(rule.matchFileNames.length, 3);
 });
 
 function taskRefs(content) {
@@ -54,11 +63,11 @@ function taskUrls(depName, ref) {
 function featureRefs(content, file) {
   const manager = managerFor(file);
   if (!manager) return [];
-  const [featurePattern, refPattern] = manager.matchStrings.map((pattern) => new RegExp(pattern, 'g'));
-  return [...content.matchAll(featurePattern)].flatMap((feature) =>
-    [...feature[0].matchAll(refPattern)].map((match) => ({
+  return manager.matchStrings.flatMap((pattern) =>
+    [...content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
       depName: manager.depNameTemplate.replace('{{{component}}}', match.groups.component),
       currentValue: match.groups.currentValue,
+      currentDigest: match.groups.currentDigest,
     })));
 }
 
@@ -123,15 +132,17 @@ test('Feature component versions are selected from standard Dev Container files'
     features: {
       'ghcr.io/gildraen/dx/dx:1.2.0': {
         toolsVersion: '1.2.3',
+        toolsCommit: 'b'.repeat(40),
         agentsVersion: 'v2.3.4-rc.1+build.2',
+        agentsCommit: 'a'.repeat(40),
       },
       'ghcr.io/other/feature:1': { agentsVersion: 'v9.9.9' },
     },
     agentsVersion: 'v8.8.8',
   });
   const expected = [
-    { depName: 'Gildraen/dx-tools', currentValue: '1.2.3' },
-    { depName: 'Gildraen/dx-agents', currentValue: 'v2.3.4-rc.1+build.2' },
+    { depName: 'Gildraen/dx-agents', currentValue: 'v2.3.4-rc.1+build.2', currentDigest: 'a'.repeat(40) },
+    { depName: 'Gildraen/dx-tools', currentValue: '1.2.3', currentDigest: 'b'.repeat(40) },
   ];
   for (const file of ['.devcontainer.json', '.devcontainer/devcontainer.json',
     '.devcontainer/python/devcontainer.json']) {
@@ -142,66 +153,68 @@ test('Feature component versions are selected from standard Dev Container files'
   }
 });
 
-test('Feature component versions ignore non-DX Features and non-SemVer values', () => {
+test('Feature component tag/SHA pairs ignore non-DX Features and incomplete values', () => {
   for (const feature of [
-    { 'ghcr.io/other/feature:1': { agentsVersion: 'v1.2.3', toolsVersion: 'v1.2.3' } },
-    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'main', toolsVersion: 'a'.repeat(40) } },
-    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v01.2.3', toolsVersion: '1.2.3-' } },
+    { 'ghcr.io/other/feature:1': { agentsVersion: 'v1.2.3', agentsCommit: 'a'.repeat(40) } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'main', agentsCommit: 'a'.repeat(40) } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v1.2.3', agentsCommit: 'invalid' } },
+    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v01.2.3', agentsCommit: 'a'.repeat(40) } },
   ]) {
     assert.deepEqual(featureRefs(JSON.stringify({ features: feature }),
       '.devcontainer/devcontainer.json'), []);
   }
 });
 
-const featureDefaultsManager = preset.customManagers[3];
+const featureDefaultsManager = preset.customManagers.find((manager) =>
+  manager.description === 'Bump DX component tag and commit SHA defaults in the Feature manifest.');
 
 function featureDefaults(content) {
-  let scopes = [{ content, groups: {} }];
-  for (const pattern of featureDefaultsManager.matchStrings) {
-    scopes = scopes.flatMap((scope) =>
-      [...scope.content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
-        content: match[0],
-        groups: { ...scope.groups, ...match.groups },
-      })));
-  }
-  return scopes.map(({ groups }) => ({
-    depName: featureDefaultsManager.depNameTemplate.replace('{{{component}}}', groups.component),
-    currentValue: groups.currentValue,
-  }));
+  return featureDefaultsManager.matchStrings.flatMap((pattern) =>
+    [...content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
+      depName: featureDefaultsManager.depNameTemplate.replace('{{{component}}}', match.groups.component),
+      currentValue: match.groups.currentValue,
+      currentDigest: match.groups.currentDigest,
+    })));
 }
 
-test('Feature manifest version defaults retain the component repository and option scope', () => {
-  assert.equal(featureDefaultsManager.matchStringsStrategy, 'recursive');
+test('Feature manifest tag/SHA defaults retain the component repository and option scope', () => {
+  assert.ok(featureDefaultsManager);
+  assert.equal(featureDefaultsManager.matchStringsStrategy, 'any');
   const filePattern = new RegExp(featureDefaultsManager.managerFilePatterns[0].slice(1, -1));
   assert.equal(filePattern.test('.devcontainer/src/dx/devcontainer-feature.json'), true);
+  assert.ok(featureDefaultsManager.autoReplaceStringTemplate.includes('{{{newDigest}}}'));
   for (const path of ['.devcontainer/devcontainer.json',
     '.devcontainer/src/other/devcontainer-feature.json', 'devcontainer-feature.json']) {
     assert.equal(filePattern.test(path), false, path);
   }
   for (const options of [
     { agentsVersion: { type: 'string', default: 'v1.2.3', description: 'agents' },
-      toolsVersion: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' } },
-    { toolsVersion: { default: '2.3.4-rc.1+build.2' }, agentsVersion: { default: 'v1.2.3' } },
+      agentsCommit: { type: 'string', default: 'a'.repeat(40), description: 'agents SHA' },
+      toolsVersion: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' },
+      toolsCommit: { description: 'tools SHA', default: 'b'.repeat(40), type: 'string' } },
+    { toolsVersion: { default: '2.3.4-rc.1+build.2' }, toolsCommit: { default: 'b'.repeat(40) },
+      agentsVersion: { default: 'v1.2.3' }, agentsCommit: { default: 'a'.repeat(40) } },
   ]) {
     assert.deepEqual(featureDefaults(JSON.stringify({
       options: { ...options, otherRef: { default: 'v9.9.9' } },
       agentsVersion: { default: 'v8.8.8' },
     })).sort((left, right) => left.depName.localeCompare(right.depName)), [
-      { depName: 'Gildraen/dx-agents', currentValue: 'v1.2.3' },
-      { depName: 'Gildraen/dx-tools', currentValue: '2.3.4-rc.1+build.2' },
+      { depName: 'Gildraen/dx-agents', currentValue: 'v1.2.3', currentDigest: 'a'.repeat(40) },
+      { depName: 'Gildraen/dx-tools', currentValue: '2.3.4-rc.1+build.2', currentDigest: 'b'.repeat(40) },
     ]);
   }
 });
 
-test('Feature manifest version defaults ignore SHA pins, branches and non-default values', () => {
-  for (const value of ['a'.repeat(40), 'main', 'feat/component-extraction', 'v01.2.3', 'v1.2.3-']) {
+test('Feature manifest defaults reject branches, malformed tags, and invalid SHA pairs', () => {
+  for (const value of ['main', 'feat/component-extraction', 'v01.2.3', 'v1.2.3-']) {
     assert.deepEqual(featureDefaults(JSON.stringify({ options: {
-      agentsVersion: { default: value, description: 'v9.9.9' },
-      toolsVersion: { default: value, description: 'v9.9.9' },
+      agentsVersion: { default: value }, agentsCommit: { default: 'a'.repeat(40) },
+      toolsVersion: { default: value }, toolsCommit: { default: 'b'.repeat(40) },
     } })), []);
   }
-  for (const manifest of [{}, { agentsVersion: { default: 'v1.2.3' } },
-    { options: { agentsVersion: { description: 'v1.2.3' }, toolsVersion: 'v2.3.4' } }]) {
+  for (const manifest of [{}, { options: { agentsVersion: { default: 'v1.2.3' } } },
+    { options: { agentsVersion: { default: 'v1.2.3' }, agentsCommit: { default: 'invalid' } } },
+    { options: { agentsVersion: { description: 'v1.2.3' }, agentsCommit: 'a'.repeat(40) } }]) {
     assert.deepEqual(featureDefaults(JSON.stringify(manifest)), []);
   }
 });

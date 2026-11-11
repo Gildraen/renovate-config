@@ -8,6 +8,18 @@
   "devcontainer": {
     "enabled": true
   },
+  "packageRules": [
+    {
+      "matchDatasources": ["github-tags"],
+      "matchPackageNames": ["Gildraen/dx-agents", "Gildraen/dx-tools"],
+      "matchFileNames": [
+        "/(^|/)\\.devcontainer\\.json$/",
+        "/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/",
+        "/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"
+      ],
+      "pinDigests": true
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
@@ -31,15 +43,13 @@
     },
     {
       "customType": "regex",
-      "description": "Bump SemVer component versions in DX Dev Container Feature options.",
-      "managerFilePatterns": [
-        "/(^|/)\\.devcontainer\\.json$/",
-        "/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/"
-      ],
+      "description": "Retired tag-only DX Feature option manager; replaced by paired tag/SHA manager below.",
+      "managerFilePatterns": ["/^$/"],
       "matchStringsStrategy": "recursive",
       "matchStrings": [
         "\"ghcr\\.io/gildraen/dx/dx:[^\"]+\"\\s*:\\s*\\{[^{}]*\\}",
-        "\"(?<component>agents|tools)Version\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\""
+        "\"(?<component>agents)Version\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\"\\s*,\\s*\"agentsCommit\"\\s*:\\s*\"(?<currentDigest>[0-9a-f]{40})\"",
+        "\"(?<component>tools)Version\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\"\\s*,\\s*\"toolsCommit\"\\s*:\\s*\"(?<currentDigest>[0-9a-f]{40})\""
       ],
       "datasourceTemplate": "github-tags",
       "depNameTemplate": "Gildraen/dx-{{{component}}}",
@@ -47,17 +57,78 @@
     },
     {
       "customType": "regex",
-      "description": "Bump SemVer agentsVersion and toolsVersion defaults in the DX Dev Container Feature manifest.",
-      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
-      "matchStringsStrategy": "recursive",
+      "description": "Retired unscoped DX Feature component tag/SHA manager; replaced by the scoped manager below.",
+      "managerFilePatterns": ["/^$/"],
       "matchStrings": [
-        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
-        "\"(?<component>agents|tools)Version\"\\s*:\\s*\\{[^{}]*\\}",
-        "\"default\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\""
+        "(?<component>agents)Version\\x22\\s*:\\s*\\x22(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\\x22\\s*,\\s*\\x22agentsCommit\\x22\\s*:\\s*\\x22(?<currentDigest>[0-9a-f]{40})\\x22",
+        "(?<component>tools)Version\\x22\\s*:\\s*\\x22(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\\x22\\s*,\\s*\\x22toolsCommit\\x22\\s*:\\s*\\x22(?<currentDigest>[0-9a-f]{40})\\x22",
+        "(?<component>agents)Version\\\\x22\\\\s*:\\s*\\\\x22(?<currentValue>v?(?:0|[1-9]\\\\d*)\\\\.(?:0|[1-9]\\\\d*)\\\\.(?:0|[1-9]\\\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\\\\x22\\\\s*,\\s*\\\\x22agentsCommit\\\\x22\\\\s*:\\s*\\\\x22(?<currentDigest>[0-9a-f]{40})\\\\x22",
+        "(?<component>tools)Version\\\\x22\\\\s*:\\s*\\\\x22(?<currentValue>v?(?:0|[1-9]\\\\d*)\\\\.(?:0|[1-9]\\\\d*)\\\\.(?:0|[1-9]\\\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\\\\x22\\\\s*,\\s*\\\\x22toolsCommit\\\\x22\\\\s*:\\s*\\\\x22(?<currentDigest>[0-9a-f]{40})\\\\x22",
+        "(?<featurePrefix>\\\"ghcr\\\\.io/gildraen/dx/dx:[^\\\"]+\\\"\\s*:\\s*\\{[^{}]*?)(?<versionPrefix>\\\"(?<component>agents)Version\\\"\\s*:\\s*\\\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<versionJoin>\\\"\\s*,\\s*\\\"agentsCommit\\\"\\s*:\\s*\\\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\\")(?<featureSuffix>[^{}]*\\})",
+        "(?<featurePrefix>\\\"ghcr\\\\.io/gildraen/dx/dx:[^\\\"]+\\\"\\s*:\\s*\\{[^{}]*?)(?<versionPrefix>\\\"(?<component>tools)Version\\\"\\s*:\\s*\\\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<versionJoin>\\\"\\s*,\\s*\\\"toolsCommit\\\"\\s*:\\s*\\\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\\")(?<featureSuffix>[^{}]*\\})"
       ],
       "datasourceTemplate": "github-tags",
       "depNameTemplate": "Gildraen/dx-{{{component}}}",
-      "versioningTemplate": "semver"
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{featurePrefix}}}{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{newDigest}}}{{{pairSuffix}}}{{{featureSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump DX Feature component tags and commit SHAs in Dev Container options.",
+      "managerFilePatterns": [
+        "/(^|/)\\.devcontainer\\.json$/",
+        "/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/"
+      ],
+      "matchStrings": [
+        "(?<featurePrefix>\\x22ghcr[.]io/gildraen/dx/dx:[^\\x22]+\\x22\\s*:\\s*\\{[^{}]*?)(?<versionPrefix>\\x22(?<component>agents)Version\\x22\\s*:\\s*\\x22)(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<versionJoin>\\x22\\s*,\\s*\\x22agentsCommit\\x22\\s*:\\s*\\x22)(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\x22)(?<featureSuffix>[^{}]*\\})",
+        "(?<featurePrefix>\\x22ghcr[.]io/gildraen/dx/dx:[^\\x22]+\\x22\\s*:\\s*\\{[^{}]*?)(?<versionPrefix>\\x22(?<component>tools)Version\\x22\\s*:\\s*\\x22)(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<versionJoin>\\x22\\s*,\\s*\\x22toolsCommit\\x22\\s*:\\s*\\x22)(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\x22)(?<featureSuffix>[^{}]*\\})"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{featurePrefix}}}{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{newDigest}}}{{{pairSuffix}}}{{{featureSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump DX component tag and commit SHA defaults in the Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
+      "matchStringsStrategy": "any",
+      "matchStrings": [
+        "(?<versionPrefix>\\\"(?<component>agents)Version\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionSuffix>\\\"[^{}]*\\}\\s*,\\s*\\\"agentsCommit\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\\"[^{}]*\\})",
+        "(?<versionPrefix>\\\"(?<component>tools)Version\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionSuffix>\\\"[^{}]*\\}\\s*,\\s*\\\"toolsCommit\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\\"[^{}]*\\})"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{versionPrefix}}}{{{newValue}}}{{{versionSuffix}}}{{{newDigest}}}{{{pairSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Retired tag-only Feature defaults manager; replaced by paired tag/SHA managers below.",
+      "managerFilePatterns": ["/^$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
+        "(?<versionPrefix>\"agentsVersion\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionJoin>\"[^{}]*\\}\\s*,\\s*)(?<commitPrefix>\"agentsCommit\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\"[^{}]*\\})"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-agents",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{commitPrefix}}}{{{newDigest}}}{{{pairSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Retired duplicate tools default manager; handled by the component defaults manager above.",
+      "managerFilePatterns": ["/^$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
+        "(?<versionPrefix>\"toolsVersion\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionJoin>\"[^{}]*\\}\\s*,\\s*)(?<commitPrefix>\"toolsCommit\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\"[^{}]*\\})"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-tools",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{commitPrefix}}}{{{newDigest}}}{{{pairSuffix}}}"
     }
   ]
 }

@@ -5,6 +5,10 @@ recommended rules, GitHub Actions digest pinning, Dev Container updates and
 updates to versioned DX Remote Taskfile references and GitHub MCP images in
 versioned `dx-mcp` launchers.
 
+DX Feature component updates use the SemVer tag to order releases and pin the
+resolved commit SHA for reproducible checkouts. Renovate updates each tag/SHA
+pair together and refreshes the digest if a tag moves.
+
 Consumer configuration:
 
 ```json
