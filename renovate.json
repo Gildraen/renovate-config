@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>Gildraen/renovate-config#feat/component-extraction"
+    "github>Gildraen/renovate-config#v0.0.0"
   ]
 }

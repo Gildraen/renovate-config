@@ -33,7 +33,7 @@ Consumer configuration:
 
 ```json
 {
-  "extends": ["github>Gildraen/renovate-config#feat/component-extraction"]
+  "extends": ["github>Gildraen/renovate-config#v0.0.0"]
 }
 ```
 
@@ -61,8 +61,7 @@ task validate
 task test
 ```
 
-The native GitHub Actions workflow runs the same validator and tests. The
-validator checks configuration syntax and rules, not resolution of the top-level
-GitHub preset. A Renovate run resolves [renovate.json](renovate.json) from the
-published branch; the local [default.json](default.json) is not a substitute for
-that remote preset.
+The validator checks configuration syntax and rules, not resolution of the
+top-level GitHub preset. A Renovate run resolves [renovate.json](renovate.json)
+from the published branch; the local [default.json](default.json) is not a
+substitute for that remote preset.
