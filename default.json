@@ -8,7 +8,16 @@
   "devcontainer": {
     "enabled": true
   },
+  "git-submodules": {
+    "enabled": true
+  },
   "packageRules": [
+    {
+      "matchManagers": ["git-submodules"],
+      "matchPackageNames": [".devcontainer/components/agents"],
+      "versioning": "semver",
+      "allowedVersions": "!/-/"
+    },
     {
       "matchDatasources": ["github-tags"],
       "matchPackageNames": ["Gildraen/dx-agents", "Gildraen/dx-tools"],
