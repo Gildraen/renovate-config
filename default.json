@@ -8,6 +8,17 @@
   "devcontainer": {
     "enabled": true
   },
+  "git-submodules": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["git-submodules"],
+      "matchPackageNames": [".devcontainer/components/agents"],
+      "versioning": "semver",
+      "allowedVersions": "!/-/"
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
