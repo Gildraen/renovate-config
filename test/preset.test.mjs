@@ -217,3 +217,11 @@ test('MCP image extraction retains its annotation and version contract', () => {
   assert.equal(preset['git-submodules'].enabled, true);
   assert.ok(preset.extends.includes('helpers:pinGitHubActionDigests'));
 });
+
+test('Agent submodule updates use SemVer', () => {
+  assert.ok(preset.packageRules.some((rule) =>
+    rule.matchManagers.includes('git-submodules')
+      && rule.matchPackageNames.includes('.devcontainer/components/agents')
+      && rule.versioning === 'semver'
+      && rule.allowedVersions === '!/-/'));
+});
