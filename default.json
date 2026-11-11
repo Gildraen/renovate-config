@@ -43,20 +43,6 @@
     },
     {
       "customType": "regex",
-      "description": "Retired tag-only DX Feature option manager; replaced by paired tag/SHA manager below.",
-      "managerFilePatterns": ["/^$/"],
-      "matchStringsStrategy": "recursive",
-      "matchStrings": [
-        "\"ghcr\\.io/gildraen/dx/dx:[^\"]+\"\\s*:\\s*\\{[^{}]*\\}",
-        "\"(?<component>agents)Version\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\"\\s*,\\s*\"agentsCommit\"\\s*:\\s*\"(?<currentDigest>[0-9a-f]{40})\"",
-        "\"(?<component>tools)Version\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)\"\\s*,\\s*\"toolsCommit\"\\s*:\\s*\"(?<currentDigest>[0-9a-f]{40})\""
-      ],
-      "datasourceTemplate": "github-tags",
-      "depNameTemplate": "Gildraen/dx-{{{component}}}",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
       "description": "Retired unscoped DX Feature component tag/SHA manager; replaced by the scoped manager below.",
       "managerFilePatterns": ["/^$/"],
       "matchStrings": [
