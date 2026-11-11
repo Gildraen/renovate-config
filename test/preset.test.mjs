@@ -214,14 +214,14 @@ test('MCP image extraction retains its annotation and version contract', () => {
   assert.equal(match?.groups.datasource, 'docker');
   assert.equal(match?.groups.depName, 'ghcr.io/github/github-mcp-server');
   assert.equal(match?.groups.currentValue, 'v0.24.0');
+  assert.equal(preset['git-submodules'].enabled, true);
+  assert.ok(preset.extends.includes('helpers:pinGitHubActionDigests'));
 });
 
-test('GitHub Actions retain version tags instead of digest pins', () => {
-  assert.ok(!preset.extends.includes('helpers:pinGitHubActionDigests'));
+test('Agent submodule updates use SemVer', () => {
   assert.ok(preset.packageRules.some((rule) =>
-    rule.matchManagers.includes('github-actions') && rule.pinDigests === false));
-});
-
-test('Git submodule updates do not replace version-selected gitlinks', () => {
-  assert.equal(preset['git-submodules'].enabled, false);
+    rule.matchManagers.includes('git-submodules')
+      && rule.matchPackageNames.includes('.devcontainer/components/agents')
+      && rule.versioning === 'semver'
+      && rule.allowedVersions === '!/-/'));
 });
