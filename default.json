@@ -44,6 +44,20 @@
       "datasourceTemplate": "github-tags",
       "depNameTemplate": "Gildraen/dx-{{{component}}}",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump SemVer agentsVersion and toolsVersion defaults in the DX Dev Container Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
+        "\"(?<component>agents|tools)Version\"\\s*:\\s*\\{[^{}]*\\}",
+        "\"default\"\\s*:\\s*\"(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)\""
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver"
     }
   ]
 }

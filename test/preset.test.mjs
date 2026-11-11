@@ -153,6 +153,59 @@ test('Feature component versions ignore non-DX Features and non-SemVer values', 
   }
 });
 
+const featureDefaultsManager = preset.customManagers[3];
+
+function featureDefaults(content) {
+  let scopes = [{ content, groups: {} }];
+  for (const pattern of featureDefaultsManager.matchStrings) {
+    scopes = scopes.flatMap((scope) =>
+      [...scope.content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
+        content: match[0],
+        groups: { ...scope.groups, ...match.groups },
+      })));
+  }
+  return scopes.map(({ groups }) => ({
+    depName: featureDefaultsManager.depNameTemplate.replace('{{{component}}}', groups.component),
+    currentValue: groups.currentValue,
+  }));
+}
+
+test('Feature manifest version defaults retain the component repository and option scope', () => {
+  assert.equal(featureDefaultsManager.matchStringsStrategy, 'recursive');
+  const filePattern = new RegExp(featureDefaultsManager.managerFilePatterns[0].slice(1, -1));
+  assert.equal(filePattern.test('.devcontainer/src/dx/devcontainer-feature.json'), true);
+  for (const path of ['.devcontainer/devcontainer.json',
+    '.devcontainer/src/other/devcontainer-feature.json', 'devcontainer-feature.json']) {
+    assert.equal(filePattern.test(path), false, path);
+  }
+  for (const options of [
+    { agentsVersion: { type: 'string', default: 'v1.2.3', description: 'agents' },
+      toolsVersion: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' } },
+    { toolsVersion: { default: '2.3.4-rc.1+build.2' }, agentsVersion: { default: 'v1.2.3' } },
+  ]) {
+    assert.deepEqual(featureDefaults(JSON.stringify({
+      options: { ...options, otherRef: { default: 'v9.9.9' } },
+      agentsVersion: { default: 'v8.8.8' },
+    })).sort((left, right) => left.depName.localeCompare(right.depName)), [
+      { depName: 'Gildraen/dx-agents', currentValue: 'v1.2.3' },
+      { depName: 'Gildraen/dx-tools', currentValue: '2.3.4-rc.1+build.2' },
+    ]);
+  }
+});
+
+test('Feature manifest version defaults ignore SHA pins, branches and non-default values', () => {
+  for (const value of ['a'.repeat(40), 'main', 'feat/component-extraction', 'v01.2.3', 'v1.2.3-']) {
+    assert.deepEqual(featureDefaults(JSON.stringify({ options: {
+      agentsVersion: { default: value, description: 'v9.9.9' },
+      toolsVersion: { default: value, description: 'v9.9.9' },
+    } })), []);
+  }
+  for (const manifest of [{}, { agentsVersion: { default: 'v1.2.3' } },
+    { options: { agentsVersion: { description: 'v1.2.3' }, toolsVersion: 'v2.3.4' } }]) {
+    assert.deepEqual(featureDefaults(JSON.stringify(manifest)), []);
+  }
+});
+
 test('MCP image extraction retains its annotation and version contract', () => {
   const match = new RegExp(mcpManager.matchStrings[0]).exec(
     '# renovate: datasource=docker depName=ghcr.io/github/github-mcp-server\n'
