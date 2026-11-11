@@ -9,6 +9,10 @@ DX Feature component updates use the SemVer tag to order releases and pin the
 resolved commit SHA for reproducible checkouts. Renovate updates each tag/SHA
 pair together and refreshes the digest if a tag moves.
 
+For Task 3.53.1 Remote Taskfile includes, pin the commit in the URL path and
+keep the SemVer tag in a trailing comment, for example:
+`https://github.com/Gildraen/dx-tools/raw/<commit-sha>/taskfiles/base.yml # v0.1.0-rc.1`.
+
 Consumer configuration:
 
 ```json

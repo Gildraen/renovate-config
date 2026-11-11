@@ -18,6 +18,11 @@
         "/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"
       ],
       "pinDigests": true
+    },
+    {
+      "matchDatasources": ["github-tags"],
+      "matchDepTypes": ["dx-taskfile"],
+      "pinDigests": true
     }
   ],
   "customManagers": [
@@ -76,10 +81,11 @@
     },
     {
       "customType": "regex",
-      "description": "Bump DX component tag and commit SHA defaults in the Feature manifest.",
-      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
-      "matchStringsStrategy": "any",
+      "description": "Retired combined Feature defaults manager; replaced by per-component tag/SHA managers below.",
+      "managerFilePatterns": ["/^$/"],
+      "matchStringsStrategy": "recursive",
       "matchStrings": [
+        "\\\"options\\\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
         "(?<versionPrefix>\\\"(?<component>agents)Version\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionSuffix>\\\"[^{}]*\\}\\s*,\\s*\\\"agentsCommit\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\\"[^{}]*\\})",
         "(?<versionPrefix>\\\"(?<component>tools)Version\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionSuffix>\\\"[^{}]*\\}\\s*,\\s*\\\"toolsCommit\\\"\\s*:\\s*\\{[^{}]*?\\\"default\\\"\\s*:\\s*\\\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\\"[^{}]*\\})"
       ],
@@ -90,8 +96,8 @@
     },
     {
       "customType": "regex",
-      "description": "Retired tag-only Feature defaults manager; replaced by paired tag/SHA managers below.",
-      "managerFilePatterns": ["/^$/"],
+      "description": "Bump agents tag and commit SHA defaults in the DX Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
       "matchStringsStrategy": "recursive",
       "matchStrings": [
         "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
@@ -104,8 +110,8 @@
     },
     {
       "customType": "regex",
-      "description": "Retired duplicate tools default manager; handled by the component defaults manager above.",
-      "managerFilePatterns": ["/^$/"],
+      "description": "Bump tools tag and commit SHA defaults in the DX Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
       "matchStringsStrategy": "recursive",
       "matchStrings": [
         "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
@@ -115,6 +121,18 @@
       "depNameTemplate": "Gildraen/dx-tools",
       "versioningTemplate": "semver",
       "autoReplaceStringTemplate": "{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{commitPrefix}}}{{{newDigest}}}{{{pairSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Update SHA-pinned DX Taskfile includes using their SemVer tag comments.",
+      "managerFilePatterns": ["/(^|/)Taskfile\\.ya?ml$/"],
+      "matchStrings": [
+        "(?<urlPrefix>https://github\\.com/(?<depName>Gildraen/dx(?:-tools)?)/raw/)(?<currentDigest>[0-9a-f]{40})(?<fileSuffix>/taskfiles/[^\\\"'\\s?#,}\\]]+\\.ya?ml)(?<tagPrefix>\\s+#\\s*)(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<trailer>[\\\"'\\s,}\\]]|$)"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver",
+      "depTypeTemplate": "dx-taskfile",
+      "autoReplaceStringTemplate": "{{{urlPrefix}}}{{{newDigest}}}{{{fileSuffix}}}{{{tagPrefix}}}{{{newValue}}}{{{trailer}}}"
     }
   ]
 }

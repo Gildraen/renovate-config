@@ -10,6 +10,8 @@ function managerFor(file) {
 }
 
 const taskManager = managerFor('Taskfile.yml');
+const taskShaManager = preset.customManagers.find((manager) =>
+  manager.description.includes('SHA-pinned DX Taskfile'));
 const mcpManager = managerFor('bin/dx-mcp');
 
 test('Managers select supported files and preserve Task lookup settings', () => {
@@ -42,6 +44,9 @@ test('DX component digest pinning is limited to matching Feature configuration f
   assert.deepEqual(rule.matchPackageNames, ['Gildraen/dx-agents', 'Gildraen/dx-tools']);
   assert.deepEqual(rule.matchDatasources, ['github-tags']);
   assert.equal(rule.matchFileNames.length, 3);
+  const taskRule = preset.packageRules.find((candidate) =>
+    candidate.matchDepTypes?.includes('dx-taskfile'));
+  assert.equal(taskRule?.pinDigests, true);
 });
 
 function taskRefs(content) {
@@ -96,6 +101,35 @@ test('Remote Taskfiles recognize multiple HTTPS includes in one mapping', () => 
     { depName: 'Gildraen/dx', currentValue: 'v1.2.3' },
     { depName: 'Gildraen/dx-tools', currentValue: 'v2.3.4' },
   ]);
+});
+
+test('SHA-pinned Taskfile URLs retain a SemVer tag for Renovate', () => {
+  assert.ok(taskShaManager);
+  assert.equal(taskShaManager.datasourceTemplate, 'github-tags');
+  assert.equal(taskShaManager.versioningTemplate, 'semver');
+  assert.equal(taskShaManager.depTypeTemplate, 'dx-taskfile');
+  assert.ok(taskShaManager.autoReplaceStringTemplate.includes('{{{newDigest}}}'));
+  for (const [depName, digest, currentValue] of [
+    ['Gildraen/dx-tools', 'b'.repeat(40), 'v1.2.3'],
+    ['Gildraen/dx', 'a'.repeat(40), 'v2.3.4-rc.1+build.2'],
+  ]) {
+    const url = `https://github.com/${depName}/raw/${digest}/taskfiles/base.yml # ${currentValue}`;
+    const matches = taskShaManager.matchStrings.flatMap((pattern) =>
+      [...url.matchAll(new RegExp(pattern, 'g'))]);
+    assert.deepEqual(matches.map(({ groups }) => ({
+      depName: groups.depName,
+      currentValue: groups.currentValue,
+      currentDigest: groups.currentDigest,
+    })), [{ depName, currentValue, currentDigest: digest }]);
+  }
+  for (const url of [
+    `https://github.com/Gildraen/dx-tools/raw/${'a'.repeat(40)}/taskfiles/base.yml`,
+    `https://github.com/Gildraen/dx-tools/raw/main/taskfiles/base.yml # v1.2.3`,
+    `https://github.com/Gildraen/dx-tools/raw/${'a'.repeat(40)}/taskfiles/base.yml # main`,
+  ]) {
+    assert.deepEqual(taskShaManager.matchStrings.flatMap((pattern) =>
+      [...url.matchAll(new RegExp(pattern, 'g'))]), [], url);
+  }
 });
 
 test('Remote Taskfiles ignore branches, SHA refs and unrelated repositories', () => {
@@ -165,24 +199,33 @@ test('Feature component tag/SHA pairs ignore non-DX Features and incomplete valu
   }
 });
 
-const featureDefaultsManager = preset.customManagers.find((manager) =>
-  manager.description === 'Bump DX component tag and commit SHA defaults in the Feature manifest.');
+const featureDefaultsManagers = preset.customManagers.filter((manager) =>
+  manager.description.includes('tag and commit SHA defaults in the DX Feature manifest.'));
 
 function featureDefaults(content) {
-  return featureDefaultsManager.matchStrings.flatMap((pattern) =>
-    [...content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
-      depName: featureDefaultsManager.depNameTemplate.replace('{{{component}}}', match.groups.component),
-      currentValue: match.groups.currentValue,
-      currentDigest: match.groups.currentDigest,
-    })));
+  return featureDefaultsManagers.flatMap((manager) => {
+    let scopes = [{ content, groups: {} }];
+    for (const pattern of manager.matchStrings) {
+      scopes = scopes.flatMap((scope) =>
+        [...scope.content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
+          content: match[0],
+          groups: { ...scope.groups, ...match.groups },
+        })));
+    }
+    return scopes.map(({ groups }) => ({
+      depName: manager.depNameTemplate,
+      currentValue: groups.currentValue,
+      currentDigest: groups.currentDigest,
+    }));
+  });
 }
 
 test('Feature manifest tag/SHA defaults retain the component repository and option scope', () => {
-  assert.ok(featureDefaultsManager);
-  assert.equal(featureDefaultsManager.matchStringsStrategy, 'any');
-  const filePattern = new RegExp(featureDefaultsManager.managerFilePatterns[0].slice(1, -1));
+  assert.equal(featureDefaultsManagers.length, 2);
+  assert.ok(featureDefaultsManagers.every((manager) => manager.matchStringsStrategy === 'recursive'));
+  const filePattern = new RegExp(featureDefaultsManagers[0].managerFilePatterns[0].slice(1, -1));
   assert.equal(filePattern.test('.devcontainer/src/dx/devcontainer-feature.json'), true);
-  assert.ok(featureDefaultsManager.autoReplaceStringTemplate.includes('{{{newDigest}}}'));
+  assert.ok(featureDefaultsManagers.every((manager) => manager.autoReplaceStringTemplate.includes('{{{newDigest}}}')));
   for (const path of ['.devcontainer/devcontainer.json',
     '.devcontainer/src/other/devcontainer-feature.json', 'devcontainer-feature.json']) {
     assert.equal(filePattern.test(path), false, path);
@@ -198,6 +241,7 @@ test('Feature manifest tag/SHA defaults retain the component repository and opti
     assert.deepEqual(featureDefaults(JSON.stringify({
       options: { ...options, otherRef: { default: 'v9.9.9' } },
       agentsVersion: { default: 'v8.8.8' },
+      agentsCommit: { default: 'c'.repeat(40) },
     })).sort((left, right) => left.depName.localeCompare(right.depName)), [
       { depName: 'Gildraen/dx-agents', currentValue: 'v1.2.3', currentDigest: 'a'.repeat(40) },
       { depName: 'Gildraen/dx-tools', currentValue: '2.3.4-rc.1+build.2', currentDigest: 'b'.repeat(40) },
