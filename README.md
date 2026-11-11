@@ -11,7 +11,7 @@ Native HTTP Remote Taskfile includes use:
 ```yaml
 includes:
   base:
-    taskfile: https://github.com/Gildraen/dx-tools/raw/<ref>/taskfiles/base.yml
+    taskfile: https://github.com/Gildraen/dx-tools/raw/v0.0.0/taskfiles/base.yml
 ```
 
 This host keeps `TASK_REMOTE_TRUSTED_HOSTS=github.com` unchanged. The preset also
@@ -24,10 +24,11 @@ SHAs in the legacy Git URL format; SHA-pinned includes use native HTTP.
 The preset also updates SemVer `agentsVersion` and `toolsVersion` options inside the
 `ghcr.io/gildraen/dx/dx:*` Dev Container Feature and their `default` fields in
 the `.devcontainer/src/dx/devcontainer-feature.json` install manifest. Branch
-and commit SHA option values are not matched by these custom managers. The pilot
-retains SHA pins without production tags. Native Git submodule management
-updates pinned checkout SHAs from `.gitmodules`; GitHub Actions and reusable
-workflow references use Renovate's native GitHub Actions manager.
+and commit SHA option values are not matched by these custom managers. The native
+Git submodule manager follows the SemVer tag in `.gitmodules` and ignores
+prereleases; the parent repository's gitlink pins the corresponding commit SHA.
+GitHub Actions and reusable workflow references use Renovate's native GitHub
+Actions manager.
 
 Consumer configuration:
 
