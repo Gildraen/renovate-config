@@ -15,7 +15,8 @@
     {
       "matchManagers": ["git-submodules"],
       "matchPackageNames": [".devcontainer/components/agents"],
-      "versioning": "semver"
+      "versioning": "semver",
+      "allowedVersions": "!/-/"
     }
   ],
   "customManagers": [

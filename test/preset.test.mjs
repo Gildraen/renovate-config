@@ -222,5 +222,6 @@ test('Agent submodule updates use SemVer', () => {
   assert.ok(preset.packageRules.some((rule) =>
     rule.matchManagers.includes('git-submodules')
       && rule.matchPackageNames.includes('.devcontainer/components/agents')
-      && rule.versioning === 'semver'));
+      && rule.versioning === 'semver'
+      && rule.allowedVersions === '!/-/'));
 });
