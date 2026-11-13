@@ -43,6 +43,27 @@ Consumer configuration:
 The shared preset is in [default.json](default.json). Repository-specific
 rules remain in each consumer's Renovate configuration.
 
+## Preset versions
+
+Consumers pin the shared preset to a published Git tag in `renovate.json`. The
+current published tag is `v0.0.0`; a pinned consumer stays on that snapshot when
+`main` changes. Renovate can propose a newer SemVer tag for a pinned preset.
+
+Preset tags are created from validated commits on `main` and are immutable. To
+publish a new preset version, validate `main`, create a new annotated `vX.Y.Z`
+tag, and push it. Never move or replace a published tag. A preset release does
+not require a new DX Feature release.
+
+```sh
+git switch main
+git pull --ff-only
+task validate
+task test
+VERSION=0.0.1
+git tag -a "v${VERSION}" -m "Renovate preset v${VERSION}"
+git push origin "v${VERSION}"
+```
+
 ## Development
 
 Shared agent resources are a Git submodule at
