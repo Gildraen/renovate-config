@@ -2,7 +2,7 @@
 
 Shared Renovate configuration for Gildraen repositories. The preset provides
 recommended rules, GitHub Actions digest pinning, Dev Container updates and
-updates to versioned DX Remote Taskfile references and GitHub MCP images in
+updates to SHA-pinned DX Remote Taskfile references and GitHub MCP images in
 versioned `dx-mcp` launchers. Remote Taskfile references retain their repository:
 `Gildraen/dx` and `Gildraen/dx-tools` are both supported.
 
@@ -11,15 +11,13 @@ Native HTTP Remote Taskfile includes use:
 ```yaml
 includes:
   base:
-    taskfile: https://github.com/Gildraen/dx-tools/raw/v0.0.0/taskfiles/base.yml
+    taskfile: https://github.com/Gildraen/dx-tools/raw/6630f37ffdc3a8c51af0f4795145a4743a61584b/taskfiles/base.yml # v0.0.0
 ```
 
-This host keeps `TASK_REMOTE_TRUSTED_HOSTS=github.com` unchanged. The preset also
-recognizes `https://raw.githubusercontent.com/Gildraen/dx-tools/<ref>/taskfiles/base.yml`
-and legacy `https://github.com/Gildraen/dx-tools.git//taskfiles/base.yml?ref=<ref>`
-includes, for either supported repository. SemVer references are updated;
-branches and SHA references are not matched. Task 3.53.1 does not resolve commit
-SHAs in the legacy Git URL format; SHA-pinned includes use native HTTP.
+This host keeps `TASK_REMOTE_TRUSTED_HOSTS=github.com` unchanged. The SHA in the
+URL path pins the checkout; Renovate follows the SemVer tag in the trailing
+comment and updates both values together. This format is used for both supported
+repositories.
 
 The preset also updates SemVer `agentsVersion` and `toolsVersion` options inside the
 `ghcr.io/gildraen/dx/dx:*` Dev Container Feature and their `default` fields in
@@ -29,6 +27,10 @@ Git submodule manager follows the SemVer tag in `.gitmodules` and ignores
 prereleases; the parent repository's gitlink pins the corresponding commit SHA.
 GitHub Actions and reusable workflow references use Renovate's native GitHub
 Actions manager.
+
+DX Feature component updates use the SemVer tag to order releases and pin the
+resolved commit SHA for reproducible checkouts. Renovate updates each tag/SHA
+pair together and refreshes the digest if a tag moves.
 
 Consumer configuration:
 
