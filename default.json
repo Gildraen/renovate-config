@@ -8,24 +8,96 @@
   "devcontainer": {
     "enabled": true
   },
+  "git-submodules": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["git-submodules"],
+      "matchPackageNames": [".devcontainer/components/agents"],
+      "versioning": "semver",
+      "allowedVersions": "!/-/"
+    },
+    {
+      "matchDatasources": ["github-tags"],
+      "matchPackageNames": ["Gildraen/dx-agents", "Gildraen/dx-tools"],
+      "matchFileNames": [
+        "/(^|/)\\.devcontainer\\.json$/",
+        "/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/",
+        "/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"
+      ],
+      "pinDigests": true
+    },
+    {
+      "matchDatasources": ["github-tags"],
+      "matchDepTypes": ["dx-taskfile"],
+      "pinDigests": true
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Bump the pinned Gildraen/dx tag used by Remote Taskfile includes (no native Task manager exists).",
-      "fileMatch": ["(^|/)Taskfile\\.ya?ml$"],
-      "matchStrings": [
-        "Gildraen/dx\\.git//[^\"'\\s]+\\?ref=(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
-      ],
-      "datasourceTemplate": "github-tags",
-      "depNameTemplate": "Gildraen/dx"
-    },
-    {
-      "customType": "regex",
       "description": "Bump the GitHub MCP server image pinned in versioned dx-mcp launchers.",
-      "fileMatch": ["(^|/)dx-mcp$"],
+      "managerFilePatterns": ["/(^|/)dx-mcp$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\nGITHUB_MCP_IMAGE=\"[^:\"]+:(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Bump DX Feature component tags and commit SHAs in Dev Container options.",
+      "managerFilePatterns": [
+        "/(^|/)\\.devcontainer\\.json$/",
+        "/(^|/)\\.devcontainer/(?:[^/]+/)?devcontainer\\.json$/"
+      ],
+      "matchStrings": [
+        "(?<featurePrefix>\\x22ghcr[.]io/gildraen/dx/dx:[^\\x22]+\\x22\\s*:\\s*\\{[^{}]*?)(?<versionPrefix>\\x22(?<component>agents)Version\\x22\\s*:\\s*\\x22)(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<versionJoin>\\x22\\s*,\\s*\\x22agentsCommit\\x22\\s*:\\s*\\x22)(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\x22)(?<featureSuffix>[^{}]*\\})",
+        "(?<featurePrefix>\\x22ghcr[.]io/gildraen/dx/dx:[^\\x22]+\\x22\\s*:\\s*\\{[^{}]*?)(?<versionPrefix>\\x22(?<component>tools)Version\\x22\\s*:\\s*\\x22)(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<versionJoin>\\x22\\s*,\\s*\\x22toolsCommit\\x22\\s*:\\s*\\x22)(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\\x22)(?<featureSuffix>[^{}]*\\})"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-{{{component}}}",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{featurePrefix}}}{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{newDigest}}}{{{pairSuffix}}}{{{featureSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump agents tag and commit SHA defaults in the DX Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
+        "(?<versionPrefix>\"agentsVersion\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionJoin>\"[^{}]*\\}\\s*,\\s*)(?<commitPrefix>\"agentsCommit\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\"[^{}]*\\})"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-agents",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{commitPrefix}}}{{{newDigest}}}{{{pairSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump tools tag and commit SHA defaults in the DX Feature manifest.",
+      "managerFilePatterns": ["/(^|/)\\.devcontainer/src/dx/devcontainer-feature\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"options\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\\}",
+        "(?<versionPrefix>\"toolsVersion\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)(?<versionJoin>\"[^{}]*\\}\\s*,\\s*)(?<commitPrefix>\"toolsCommit\"\\s*:\\s*\\{[^{}]*?\"default\"\\s*:\\s*\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\"[^{}]*\\})"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "Gildraen/dx-tools",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "{{{versionPrefix}}}{{{newValue}}}{{{versionJoin}}}{{{commitPrefix}}}{{{newDigest}}}{{{pairSuffix}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Update SHA-pinned DX Taskfile includes using their SemVer tag comments.",
+      "managerFilePatterns": ["/(^|/)Taskfile\\.ya?ml$/"],
+      "matchStrings": [
+        "(?<urlPrefix>https://github\\.com/(?<depName>Gildraen/dx(?:-tools)?)/raw/)(?<currentDigest>[0-9a-f]{40})(?<fileSuffix>/taskfiles/[^\\\"'\\s?#,}\\]]+\\.ya?ml)(?<tagPrefix>\\s+#\\s*)(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:[-+][0-9A-Za-z.+-]+)?)(?<trailer>[\\\"'\\s,}\\]]|$)"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver",
+      "depTypeTemplate": "dx-taskfile",
+      "autoReplaceStringTemplate": "{{{urlPrefix}}}{{{newDigest}}}{{{fileSuffix}}}{{{tagPrefix}}}{{{newValue}}}{{{trailer}}}"
     }
   ]
 }
