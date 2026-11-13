@@ -59,8 +59,9 @@ git switch main
 git pull --ff-only
 task validate
 task test
-git tag -a vX.Y.Z -m "Renovate preset vX.Y.Z"
-git push origin vX.Y.Z
+VERSION=0.0.1
+git tag -a "v${VERSION}" -m "Renovate preset v${VERSION}"
+git push origin "v${VERSION}"
 ```
 
 ## Development
