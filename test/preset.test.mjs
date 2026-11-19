@@ -9,7 +9,7 @@ function managerFor(file) {
         manager.managerFilePatterns.some((pattern) => new RegExp(pattern.slice(1, -1)).test(file)));
 }
 
-const taskManager = managerFor('Taskfile.yml');
+const taskManager = managerFor('Taskfile.yaml');
 const mcpManager = managerFor('bin/dx-mcp');
 const componentManager = managerFor('.devcontainer/src/dx/install.sh');
 
