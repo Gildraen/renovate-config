@@ -5,216 +5,152 @@ import test from 'node:test';
 const preset = JSON.parse(readFileSync(new URL('../default.json', import.meta.url)));
 
 function managerFor(file) {
-  return preset.customManagers.find((manager) =>
-    manager.managerFilePatterns.some((pattern) => new RegExp(pattern.slice(1, -1)).test(file)));
+    return preset.customManagers.find((manager) =>
+        manager.managerFilePatterns.some((pattern) => new RegExp(pattern.slice(1, -1)).test(file)));
 }
 
 const taskManager = managerFor('Taskfile.yml');
 const mcpManager = managerFor('bin/dx-mcp');
+const componentManager = managerFor('.devcontainer/src/dx/install.sh');
 
-test('Managers select supported files and preserve Task lookup settings', () => {
-  for (const file of ['Taskfile.yml', 'Taskfile.yaml', 'nested/Taskfile.yml']) {
-    assert.equal(managerFor(file), taskManager);
-  }
-  for (const file of ['OtherTaskfile.yml', 'Taskfile.yml.bak', 'bin/dx-mcp.bak']) {
-    assert.equal(managerFor(file), undefined);
-  }
-  const featureManager = managerFor('.devcontainer/devcontainer.json');
-  assert.ok(featureManager, 'DX Feature options manager is missing');
-  for (const file of ['.devcontainer.json', '.devcontainer/devcontainer.json',
-    '.devcontainer/python/devcontainer.json']) {
-    assert.equal(managerFor(file), featureManager);
-  }
-  for (const file of ['devcontainer.json', '.devcontainer/other.json']) {
-    assert.equal(managerFor(file), undefined);
-  }
-  assert.equal(taskManager.datasourceTemplate, 'github-tags');
-  assert.equal(taskManager.versioningTemplate, 'semver');
-  assert.equal(taskManager.depNameTemplate, undefined);
-  assert.equal(taskManager.depTypeTemplate, 'dx-taskfile');
-  assert.equal(featureManager.datasourceTemplate, 'github-tags');
-  assert.equal(featureManager.versioningTemplate, 'semver');
-  assert.ok(featureManager.autoReplaceStringTemplate.includes('{{{newDigest}}}'));
+test('managers select supported files', () => {
+    for (const file of ['Taskfile.yml', 'Taskfile.yaml', 'nested/Taskfile.yml']) {
+        assert.equal(managerFor(file), taskManager);
+    }
+    for (const file of ['OtherTaskfile.yml', 'Taskfile.yml.bak']) {
+        assert.equal(managerFor(file), undefined);
+    }
+    for (const file of ['install.sh', 'nested/install.sh', '.devcontainer/src/dx/install.sh']) {
+        assert.equal(managerFor(file), componentManager);
+    }
+    for (const file of ['installer.sh', 'install.sh.bak']) assert.equal(managerFor(file), undefined);
+    assert.equal(taskManager.datasourceTemplate, 'github-tags');
+    assert.equal(taskManager.versioningTemplate, 'semver');
+    assert.equal(taskManager.depTypeTemplate, 'github-taskfile');
+    assert.equal(componentManager.datasourceTemplate, '{{{datasource}}}');
+    assert.equal(componentManager.packageNameTemplate, '{{{packageName}}}');
+    assert.equal(componentManager.depTypeTemplate, 'dx-component');
+    assert.doesNotMatch(JSON.stringify(componentManager), /Gildraen/);
 });
 
-test('DX tag/SHA digest pinning is scoped to component files and Taskfiles', () => {
-  const featureRule = preset.packageRules.find((rule) =>
-    rule.matchDatasources?.includes('github-tags')
-      && rule.matchPackageNames?.includes('Gildraen/dx-agents'));
-  assert.ok(featureRule);
-  assert.deepEqual(featureRule.matchPackageNames,
-    ['Gildraen/dx-agents', 'Gildraen/dx-tools']);
-  assert.equal(featureRule.pinDigests, true);
-  assert.equal(featureRule.matchFileNames.length, 3);
-
-  const taskfileRule = preset.packageRules.find((rule) =>
-    rule.matchDepTypes?.includes('dx-taskfile'));
-  assert.equal(taskfileRule?.matchDatasources[0], 'github-tags');
-  assert.equal(taskfileRule?.pinDigests, true);
+test('stable component rules cover both gitlinks and installer pairs', () => {
+    assert.equal(preset['git-submodules'].enabled, true);
+    const rule = preset.packageRules.find((candidate) =>
+        candidate.matchDepNames?.includes('.devcontainer/components/agents'));
+    assert.ok(rule);
+    assert.deepEqual(rule.matchDepNames,
+        ['.devcontainer/components/agents', '.devcontainer/components/tools']);
+    assert.equal(rule.versioning, 'semver');
+    assert.equal(rule.allowedVersions,
+        '/^v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/');
+    assert.equal(rule.groupName, 'Fixed component pins');
+    const allowed = new RegExp(rule.allowedVersions.slice(1, -1));
+    assert.ok(allowed.test('v1.2.3'));
+    for (const version of ['v1.2.3-rc.1', 'v1.2.3+build.1', '1.2.3', 'v01.2.3']) {
+        assert.ok(!allowed.test(version), `unexpectedly allowed ${version}`);
+    }
+    assert.equal(preset.packageRules.find((candidate) =>
+        candidate.matchDepTypes?.includes('dx-component'))?.pinDigests, true);
+    assert.equal(preset.packageRules.find((candidate) =>
+        candidate.matchDepTypes?.includes('github-taskfile'))?.pinDigests, true);
 });
 
-function featureRefs(content, file) {
-  const manager = managerFor(file);
-  if (!manager) return [];
-  return manager.matchStrings.flatMap((pattern) =>
-    [...content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
-      depName: manager.depNameTemplate.replace('{{{component}}}', match.groups.component),
-      currentValue: match.groups.currentValue,
-      currentDigest: match.groups.currentDigest,
-    })));
+function componentRefs(content) {
+    return [...content.matchAll(new RegExp(componentManager.matchStrings[0], 'g'))]
+        .map(({ groups }) => ({
+            datasource: groups.datasource,
+            depName: groups.depName,
+            packageName: groups.packageName,
+            currentValue: groups.currentValue,
+            currentDigest: groups.currentDigest,
+            versionPrefix: groups.versionPrefix,
+            versionJoin: groups.versionJoin,
+            pairSuffix: groups.pairSuffix,
+        }));
 }
+
+test('generic annotations extract and replace tag/SHA pairs for arbitrary GitHub repositories', () => {
+    const agentsCommit = 'a'.repeat(40);
+    const toolsCommit = 'b'.repeat(40);
+    const installer = [
+        '# renovate: datasource=github-tags depName=.devcontainer/components/agents packageName=ExampleOrg/agents',
+        'agents_version="v1.2.3"',
+        `agents_commit="${agentsCommit}"`,
+        '# renovate: datasource=github-tags depName=.devcontainer/components/tools packageName=AnotherOrg/tools',
+        'tools_version="v2.3.4"',
+        `tools_commit="${toolsCommit}"`,
+    ].join('\n');
+    const refs = componentRefs(installer);
+    assert.deepEqual(refs.map(({ datasource, depName, packageName, currentValue, currentDigest }) => ({
+        datasource, depName, packageName, currentValue, currentDigest,
+    })), [
+        { datasource: 'github-tags', depName: '.devcontainer/components/agents', packageName: 'ExampleOrg/agents', currentValue: 'v1.2.3', currentDigest: agentsCommit },
+        { datasource: 'github-tags', depName: '.devcontainer/components/tools', packageName: 'AnotherOrg/tools', currentValue: 'v2.3.4', currentDigest: toolsCommit },
+    ]);
+    const template = componentManager.autoReplaceStringTemplate;
+    const updated = template
+        .replace('{{{versionPrefix}}}', refs[0].versionPrefix)
+        .replace('{{{newValue}}}', 'v1.2.4')
+        .replace('{{{versionJoin}}}', refs[0].versionJoin)
+        .replace('{{{newDigest}}}', 'c'.repeat(40))
+        .replace('{{{pairSuffix}}}', refs[0].pairSuffix);
+    assert.equal(updated, `agents_version="v1.2.4"\nagents_commit="${'c'.repeat(40)}"`);
+});
+
+test('component annotations reject prereleases, branches and invalid SHAs', () => {
+    for (const [version, commit] of [
+        ['v1.2.3-rc.1', 'a'.repeat(40)],
+        ['main', 'a'.repeat(40)],
+        ['v1.2.3', 'invalid'],
+        ['v01.2.3', 'a'.repeat(40)],
+    ]) {
+        const content = `# renovate: datasource=github-tags depName=components/agents packageName=ExampleOrg/agents\nagents_version="${version}"\nagents_commit="${commit}"`;
+        assert.deepEqual(componentRefs(content), []);
+    }
+    assert.equal(managerFor('.devcontainer/devcontainer.json'), undefined);
+    assert.equal(managerFor('.devcontainer/src/dx/devcontainer-feature.json'), undefined);
+});
 
 test('SHA-pinned Taskfile URLs retain a SemVer tag for Renovate', () => {
-  assert.ok(taskManager.autoReplaceStringTemplate.includes('{{{newDigest}}}'));
-  for (const [depName, digest, currentValue] of [
-    ['Gildraen/dx-tools', 'b'.repeat(40), 'v1.2.3'],
-    ['Gildraen/dx', 'a'.repeat(40), 'v2.3.4-rc.1+build.2'],
-  ]) {
-    const url = `https://github.com/${depName}/raw/${digest}/taskfiles/base.yml # ${currentValue}`;
-    const matches = taskManager.matchStrings.flatMap((pattern) =>
-      [...url.matchAll(new RegExp(pattern, 'g'))]);
+    assert.ok(taskManager.autoReplaceStringTemplate.includes('{{{newDigest}}}'));
+    const digest = 'b'.repeat(40);
+    const url = `https://github.com/ExampleOrg/shared-config/raw/${digest}/taskfiles/base.yml # v1.2.3`;
+    const matches = taskManager.matchStrings.flatMap((pattern) => [...url.matchAll(new RegExp(pattern, 'g'))]);
     assert.deepEqual(matches.map(({ groups }) => ({
-      depName: groups.depName,
-      currentValue: groups.currentValue,
-      currentDigest: groups.currentDigest,
-    })), [{ depName, currentValue, currentDigest: digest }]);
-  }
-  for (const url of [
-    `https://github.com/Gildraen/dx-tools/raw/${'a'.repeat(40)}/taskfiles/base.yml`,
-    `https://github.com/Gildraen/dx-tools/raw/main/taskfiles/base.yml # v1.2.3`,
-    `https://github.com/Gildraen/dx-tools/raw/${'a'.repeat(40)}/taskfiles/base.yml # main`,
-    'https://github.com/Gildraen/dx-tools/raw/v1.2.3/taskfiles/base.yml',
-  ]) {
-    assert.deepEqual(taskManager.matchStrings.flatMap((pattern) =>
-      [...url.matchAll(new RegExp(pattern, 'g'))]), [], url);
-  }
-});
-
-test('Feature component versions are selected from standard Dev Container files', () => {
-  const configuration = JSON.stringify({
-    features: {
-      'ghcr.io/gildraen/dx/dx:1.2.0': {
-        toolsVersion: '1.2.3',
-        toolsCommit: 'b'.repeat(40),
-        agentsVersion: 'v2.3.4-rc.1+build.2',
-        agentsCommit: 'a'.repeat(40),
-      },
-      'ghcr.io/other/feature:1': { agentsVersion: 'v9.9.9' },
-    },
-    agentsVersion: 'v8.8.8',
-  });
-  const expected = [
-    { depName: 'Gildraen/dx-agents', currentValue: 'v2.3.4-rc.1+build.2', currentDigest: 'a'.repeat(40) },
-    { depName: 'Gildraen/dx-tools', currentValue: '1.2.3', currentDigest: 'b'.repeat(40) },
-  ];
-  for (const file of ['.devcontainer.json', '.devcontainer/devcontainer.json',
-    '.devcontainer/python/devcontainer.json']) {
-    assert.deepEqual(featureRefs(configuration, file), expected, file);
-  }
-  for (const file of ['devcontainer.json', '.devcontainer/other.json']) {
-    assert.deepEqual(featureRefs(configuration, file), [], file);
-  }
-});
-
-test('Feature component tag/SHA pairs ignore non-DX Features and incomplete values', () => {
-  for (const feature of [
-    { 'ghcr.io/other/feature:1': { agentsVersion: 'v1.2.3', agentsCommit: 'a'.repeat(40) } },
-    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'main', agentsCommit: 'a'.repeat(40) } },
-    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v1.2.3', agentsCommit: 'invalid' } },
-    { 'ghcr.io/gildraen/dx/dx:1': { agentsVersion: 'v01.2.3', agentsCommit: 'a'.repeat(40) } },
-  ]) {
-    assert.deepEqual(featureRefs(JSON.stringify({ features: feature }),
-      '.devcontainer/devcontainer.json'), []);
-  }
-});
-
-const featureDefaultsManagers = preset.customManagers.filter((manager) =>
-  manager.description.includes('tag and commit SHA defaults in the DX Feature manifest.'));
-
-function featureDefaults(content) {
-  return featureDefaultsManagers.flatMap((manager) => {
-    let scopes = [{ content, groups: {} }];
-    for (const pattern of manager.matchStrings) {
-      scopes = scopes.flatMap((scope) =>
-        [...scope.content.matchAll(new RegExp(pattern, 'g'))].map((match) => ({
-          content: match[0],
-          groups: { ...scope.groups, ...match.groups },
-        })));
+        depName: groups.depName,
+        currentValue: groups.currentValue,
+        currentDigest: groups.currentDigest,
+    })), [{ depName: 'ExampleOrg/shared-config', currentValue: 'v1.2.3', currentDigest: digest }]);
+    const groups = matches[0].groups;
+    const updated = taskManager.autoReplaceStringTemplate
+        .replace('{{{urlPrefix}}}', groups.urlPrefix)
+        .replace('{{{newDigest}}}', 'c'.repeat(40))
+        .replace('{{{fileSuffix}}}', groups.fileSuffix)
+        .replace('{{{tagPrefix}}}', groups.tagPrefix)
+        .replace('{{{newValue}}}', 'v1.2.4')
+        .replace('{{{trailer}}}', groups.trailer);
+    assert.equal(updated,
+        `https://github.com/ExampleOrg/shared-config/raw/${'c'.repeat(40)}/taskfiles/base.yml # v1.2.4`);
+    for (const invalidUrl of [
+        `https://github.com/ExampleOrg/shared-config/raw/${'a'.repeat(40)}/taskfiles/base.yml`,
+        'https://github.com/ExampleOrg/shared-config/raw/main/taskfiles/base.yml # v1.2.3',
+        `https://github.com/ExampleOrg/shared-config/raw/${'a'.repeat(40)}/taskfiles/base.yml # main`,
+        `https://github.com/ExampleOrg/shared-config/raw/${'a'.repeat(39)}/taskfiles/base.yml # v1.2.3`,
+        `https://github.com/ExampleOrg/shared-config/raw/${'a'.repeat(40)}/other/base.yml # v1.2.3`,
+    ]) {
+        assert.deepEqual(taskManager.matchStrings.flatMap((pattern) =>
+            [...invalidUrl.matchAll(new RegExp(pattern, 'g'))]), [], invalidUrl);
     }
-    return scopes.map(({ groups }) => ({
-      depName: manager.depNameTemplate,
-      currentValue: groups.currentValue,
-      currentDigest: groups.currentDigest,
-    }));
-  });
-}
-
-test('Feature manifest tag/SHA defaults retain the component repository and option scope', () => {
-  assert.equal(featureDefaultsManagers.length, 2);
-  assert.ok(featureDefaultsManagers.every((manager) => manager.matchStringsStrategy === 'recursive'));
-  const filePattern = new RegExp(featureDefaultsManagers[0].managerFilePatterns[0].slice(1, -1));
-  assert.equal(filePattern.test('.devcontainer/src/dx/devcontainer-feature.json'), true);
-  assert.ok(featureDefaultsManagers.every((manager) => manager.autoReplaceStringTemplate.includes('{{{newDigest}}}')));
-  for (const path of ['.devcontainer/devcontainer.json',
-    '.devcontainer/src/other/devcontainer-feature.json', 'devcontainer-feature.json']) {
-    assert.equal(filePattern.test(path), false, path);
-  }
-  for (const options of [
-    {
-      agentsVersion: { type: 'string', default: 'v1.2.3', description: 'agents' },
-      agentsCommit: { type: 'string', default: 'a'.repeat(40), description: 'agents SHA' },
-      toolsVersion: { description: 'tools', default: '2.3.4-rc.1+build.2', type: 'string' },
-      toolsCommit: { description: 'tools SHA', default: 'b'.repeat(40), type: 'string' }
-    },
-    {
-      toolsVersion: { default: '2.3.4-rc.1+build.2' }, toolsCommit: { default: 'b'.repeat(40) },
-      agentsVersion: { default: 'v1.2.3' }, agentsCommit: { default: 'a'.repeat(40) }
-    },
-  ]) {
-    assert.deepEqual(featureDefaults(JSON.stringify({
-      options: { ...options, otherRef: { default: 'v9.9.9' } },
-      agentsVersion: { default: 'v8.8.8' },
-      agentsCommit: { default: 'c'.repeat(40) },
-    })).sort((left, right) => left.depName.localeCompare(right.depName)), [
-      { depName: 'Gildraen/dx-agents', currentValue: 'v1.2.3', currentDigest: 'a'.repeat(40) },
-      { depName: 'Gildraen/dx-tools', currentValue: '2.3.4-rc.1+build.2', currentDigest: 'b'.repeat(40) },
-    ]);
-  }
-});
-
-test('Feature manifest defaults reject branches, malformed tags, and invalid SHA pairs', () => {
-  for (const value of ['main', 'feat/component-extraction', 'v01.2.3', 'v1.2.3-']) {
-    assert.deepEqual(featureDefaults(JSON.stringify({
-      options: {
-        agentsVersion: { default: value }, agentsCommit: { default: 'a'.repeat(40) },
-        toolsVersion: { default: value }, toolsCommit: { default: 'b'.repeat(40) },
-      }
-    })), []);
-  }
-  for (const manifest of [{}, { options: { agentsVersion: { default: 'v1.2.3' } } },
-  { options: { agentsVersion: { default: 'v1.2.3' }, agentsCommit: { default: 'invalid' } } },
-  { options: { agentsVersion: { description: 'v1.2.3' }, agentsCommit: 'a'.repeat(40) } }]) {
-    assert.deepEqual(featureDefaults(JSON.stringify(manifest)), []);
-  }
 });
 
 test('MCP image extraction retains its annotation and version contract', () => {
-  const match = new RegExp(mcpManager.matchStrings[0]).exec(
-    '# renovate: datasource=docker depName=ghcr.io/github/github-mcp-server\n'
-    + 'GITHUB_MCP_IMAGE="ghcr.io/github/github-mcp-server:v0.24.0"',
-  );
-  assert.equal(match?.groups.datasource, 'docker');
-  assert.equal(match?.groups.depName, 'ghcr.io/github/github-mcp-server');
-  assert.equal(match?.groups.currentValue, 'v0.24.0');
-  assert.ok(preset.extends.includes('helpers:pinGitHubActionDigests'));
-});
-
-test('Git submodule manager follows stable SemVer tags', () => {
-  assert.equal(preset['git-submodules'].enabled, true);
-  const rule = preset.packageRules.find((candidate) =>
-    candidate.matchManagers?.includes('git-submodules'));
-  assert.ok(rule);
-  assert.equal(rule.versioning, 'semver');
-  assert.equal(rule.allowedVersions, '!/-/');
-  assert.equal(rule.pinDigests, undefined);
+    const match = new RegExp(mcpManager.matchStrings[0]).exec(
+        '# renovate: datasource=docker depName=ghcr.io/github/github-mcp-server\n'
+        + 'GITHUB_MCP_IMAGE="ghcr.io/github/github-mcp-server:v0.24.0"',
+    );
+    assert.equal(match?.groups.datasource, 'docker');
+    assert.equal(match?.groups.depName, 'ghcr.io/github/github-mcp-server');
+    assert.equal(match?.groups.currentValue, 'v0.24.0');
+    assert.ok(preset.extends.includes('helpers:pinGitHubActionDigests'));
+    assert.equal(preset['git-submodules'].enabled, true);
 });
