@@ -22,13 +22,14 @@ Fixed component pairs in installer scripts use this annotation format:
 
 ```sh
 # renovate: datasource=github-tags depName=.devcontainer/components/agents packageName=<owner>/<repository>
-agents_version="v<major>.<minor>.<patch>"
+agents_version="<major>.<minor>.<patch>"
 agents_commit="<matching-commit-sha>"
 ```
 
 `depName` matches the component's gitlink path; `packageName` identifies the
 GitHub repository used to look up tags. Renovate updates the tag and commit SHA
-as a pair and accepts stable SemVer tags only.
+as a pair. It accepts stable SemVer tags both with and without a `v` prefix;
+new DX component releases use no prefix.
 
 For the matching gitlink update, use the same path and stable tag in
 `.gitmodules`:
@@ -37,7 +38,7 @@ For the matching gitlink update, use the same path and stable tag in
 [submodule ".devcontainer/components/agents"]
   path = .devcontainer/components/agents
   url = https://github.com/<owner>/<repository>.git
-  branch = v<major>.<minor>.<patch>
+  branch = <major>.<minor>.<patch>
 ```
 
 Keep `git-submodules` enabled in the consumer configuration; a repository-level
@@ -68,24 +69,17 @@ Consumers pin the shared preset to a published Git tag in `renovate.json`. A
 pinned consumer stays on that snapshot when `main` changes. Renovate can propose
 a newer stable tag for a pinned preset.
 
-Preset tags are created from validated commits on `main` and are immutable. To
-publish a new preset version, validate `main`, create a new annotated `vX.Y.Z`
-tag, and push it. Never move or replace a published tag. A preset release does
-not require a new DX Feature release.
+Preset tags are created by Release Please from Conventional Commits after the
+`validate` workflow succeeds on `main`. Merge its release PR to create the
+GitHub Release and the tag. New tags omit `v`; existing `v` tags remain valid
+and this workflow never renames or deletes them. Published tags should not be
+moved or replaced. A preset release does not require a new DX Feature release.
 
-```sh
-git switch main
-git pull --ff-only
-task validate
-task test
-read -r -p "Next unique stable version (without v): " VERSION
-if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-  printf 'Expected a stable SemVer version without a v prefix.\n' >&2
-  exit 1
-fi
-git tag -a "v${VERSION}" -m "Renovate preset v${VERSION}"
-git push origin "v${VERSION}"
-```
+Release Please uses `GITHUB_TOKEN` by default, which cannot create pull requests
+unless the repository setting permits it. Otherwise configure a repository
+secret named `RELEASE_PLEASE_TOKEN` with a fine-grained token limited to this
+repository and contents, issues and pull-request write access. The workflow does
+not approve pull requests.
 
 ## Development
 

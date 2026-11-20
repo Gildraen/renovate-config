@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "4a562942e4e7fc1bfe16e9f328893b66a6e5e160",
+  "include-component-in-tag": false,
+  "include-v-in-tag": false,
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "renovate-config",
+      "version-file": "version.txt"
+    }
+  }
+}

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-
 const preset = JSON.parse(readFileSync(new URL('../default.json', import.meta.url)));
+const releaseConfig = JSON.parse(readFileSync(new URL('../release-please-config.json', import.meta.url)));
+const releaseManifest = JSON.parse(readFileSync(new URL('../.release-please-manifest.json', import.meta.url)));
+const releaseWorkflow = readFileSync(new URL('../.github/workflows/validate.yaml', import.meta.url), 'utf8');
 
 function managerFor(file) {
     return preset.customManagers.find((manager) =>
@@ -42,17 +44,37 @@ test('stable component rules cover both gitlinks and installer pairs', () => {
         ['.devcontainer/components/agents', '.devcontainer/components/tools']);
     assert.equal(rule.versioning, 'semver');
     assert.equal(rule.allowedVersions,
-        '/^v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/');
+        '/^v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/');
     assert.equal(rule.groupName, 'Fixed component pins');
     const allowed = new RegExp(rule.allowedVersions.slice(1, -1));
     assert.ok(allowed.test('v1.2.3'));
-    for (const version of ['v1.2.3-rc.1', 'v1.2.3+build.1', '1.2.3', 'v01.2.3']) {
+    assert.ok(allowed.test('1.2.3'));
+    for (const version of ['v1.2.3-rc.1', '1.2.3-rc.1', 'v1.2.3+build.1', '1.2.3+build.1', 'v01.2.3', '01.2.3']) {
         assert.ok(!allowed.test(version), `unexpectedly allowed ${version}`);
     }
     assert.equal(preset.packageRules.find((candidate) =>
         candidate.matchDepTypes?.includes('dx-component'))?.pinDigests, true);
     assert.equal(preset.packageRules.find((candidate) =>
         candidate.matchDepTypes?.includes('github-taskfile'))?.pinDigests, true);
+});
+
+test('release config uses the current baseline and unprefixed stable tags', () => {
+    assert.equal(releaseConfig['include-v-in-tag'], false);
+    assert.equal(releaseConfig['include-component-in-tag'], false);
+    assert.equal(releaseConfig['bootstrap-sha'], '4a562942e4e7fc1bfe16e9f328893b66a6e5e160');
+    assert.equal(releaseConfig.packages['.']['release-type'], 'simple');
+    assert.equal(releaseConfig.packages['.']['version-file'], 'version.txt');
+    assert.equal(releaseManifest['.'], '0.1.0');
+    assert.equal(readFileSync(new URL('../version.txt', import.meta.url), 'utf8').trim(), releaseManifest['.']);
+});
+
+test('release workflow waits for validation on main and scopes write access', () => {
+    assert.match(releaseWorkflow, /^  release:$/m);
+    assert.match(releaseWorkflow, /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
+    assert.match(releaseWorkflow, /needs: validate/);
+    assert.match(releaseWorkflow, /googleapis\/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7/);
+    assert.match(releaseWorkflow, /contents: write[\s\S]*issues: write[\s\S]*pull-requests: write/);
+    assert.match(releaseWorkflow, /token: \$\{\{ secrets\.RELEASE_PLEASE_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
 });
 
 function componentRefs(content) {
@@ -77,7 +99,7 @@ test('generic annotations extract and replace tag/SHA pairs for arbitrary GitHub
         'agents_version="v1.2.3"',
         `agents_commit="${agentsCommit}"`,
         '# renovate: datasource=github-tags depName=.devcontainer/components/tools packageName=AnotherOrg/tools',
-        'tools_version="v2.3.4"',
+        'tools_version="2.3.4"',
         `tools_commit="${toolsCommit}"`,
     ].join('\n');
     const refs = componentRefs(installer);
@@ -85,24 +107,33 @@ test('generic annotations extract and replace tag/SHA pairs for arbitrary GitHub
         datasource, depName, packageName, currentValue, currentDigest,
     })), [
         { datasource: 'github-tags', depName: '.devcontainer/components/agents', packageName: 'ExampleOrg/agents', currentValue: 'v1.2.3', currentDigest: agentsCommit },
-        { datasource: 'github-tags', depName: '.devcontainer/components/tools', packageName: 'AnotherOrg/tools', currentValue: 'v2.3.4', currentDigest: toolsCommit },
+        { datasource: 'github-tags', depName: '.devcontainer/components/tools', packageName: 'AnotherOrg/tools', currentValue: '2.3.4', currentDigest: toolsCommit },
     ]);
     const template = componentManager.autoReplaceStringTemplate;
-    const updated = template
+    const updatedFromPrefixed = template
         .replace('{{{versionPrefix}}}', refs[0].versionPrefix)
-        .replace('{{{newValue}}}', 'v1.2.4')
+        .replace('{{{newValue}}}', '1.2.4')
         .replace('{{{versionJoin}}}', refs[0].versionJoin)
         .replace('{{{newDigest}}}', 'c'.repeat(40))
         .replace('{{{pairSuffix}}}', refs[0].pairSuffix);
-    assert.equal(updated, `agents_version="v1.2.4"\nagents_commit="${'c'.repeat(40)}"`);
+    assert.equal(updatedFromPrefixed, `agents_version="1.2.4"\nagents_commit="${'c'.repeat(40)}"`);
+    const updatedWithoutPrefix = template
+        .replace('{{{versionPrefix}}}', refs[1].versionPrefix)
+        .replace('{{{newValue}}}', '2.3.5')
+        .replace('{{{versionJoin}}}', refs[1].versionJoin)
+        .replace('{{{newDigest}}}', 'd'.repeat(40))
+        .replace('{{{pairSuffix}}}', refs[1].pairSuffix);
+    assert.equal(updatedWithoutPrefix, `tools_version="2.3.5"\ntools_commit="${'d'.repeat(40)}"`);
 });
 
 test('component annotations reject prereleases, branches and invalid SHAs', () => {
     for (const [version, commit] of [
         ['v1.2.3-rc.1', 'a'.repeat(40)],
+        ['1.2.3-rc.1', 'a'.repeat(40)],
         ['main', 'a'.repeat(40)],
         ['v1.2.3', 'invalid'],
         ['v01.2.3', 'a'.repeat(40)],
+        ['01.2.3', 'a'.repeat(40)],
     ]) {
         const content = `# renovate: datasource=github-tags depName=components/agents packageName=ExampleOrg/agents\nagents_version="${version}"\nagents_commit="${commit}"`;
         assert.deepEqual(componentRefs(content), []);
@@ -131,6 +162,22 @@ test('SHA-pinned Taskfile URLs retain a SemVer tag for Renovate', () => {
         .replace('{{{trailer}}}', groups.trailer);
     assert.equal(updated,
         `https://github.com/ExampleOrg/shared-config/raw/${'c'.repeat(40)}/taskfiles/base.yml # v1.2.4`);
+    const unprefixedUrl = `https://github.com/ExampleOrg/shared-config/raw/${digest}/taskfiles/base.yml # 1.2.3`;
+    const unprefixedMatches = taskManager.matchStrings.flatMap((pattern) => [...unprefixedUrl.matchAll(new RegExp(pattern, 'g'))]);
+    assert.deepEqual(unprefixedMatches.map(({ groups }) => ({
+        currentValue: groups.currentValue,
+        currentDigest: groups.currentDigest,
+    })), [{ currentValue: '1.2.3', currentDigest: digest }]);
+    const unprefixedGroups = unprefixedMatches[0].groups;
+    const unprefixedUpdated = taskManager.autoReplaceStringTemplate
+        .replace('{{{urlPrefix}}}', unprefixedGroups.urlPrefix)
+        .replace('{{{newDigest}}}', 'c'.repeat(40))
+        .replace('{{{fileSuffix}}}', unprefixedGroups.fileSuffix)
+        .replace('{{{tagPrefix}}}', unprefixedGroups.tagPrefix)
+        .replace('{{{newValue}}}', '1.2.4')
+        .replace('{{{trailer}}}', unprefixedGroups.trailer);
+    assert.equal(unprefixedUpdated,
+        `https://github.com/ExampleOrg/shared-config/raw/${'c'.repeat(40)}/taskfiles/base.yml # 1.2.4`);
     for (const invalidUrl of [
         `https://github.com/ExampleOrg/shared-config/raw/${'a'.repeat(40)}/taskfiles/base.yml`,
         'https://github.com/ExampleOrg/shared-config/raw/main/taskfiles/base.yml # v1.2.3',
