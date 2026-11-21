@@ -29,7 +29,7 @@ jobs:
     needs: validate
     permissions:
       contents: read
-    uses: Gildraen/ci-workflows/.github/workflows/reusable-release-please.yml@495bb9b377719414123af8c329b02aeff58ab440 # 0.2.0
+    uses: Gildraen/ci-workflows/.github/workflows/reusable-release-please.yml@eabb9d61ea2a827476f46e7e3e9577d956d8f470 # 0.2.0
     with:
       config-file: release-please-config.json
       manifest-file: .release-please-manifest.json
