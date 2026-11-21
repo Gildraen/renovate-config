@@ -72,9 +72,12 @@ test('release workflow waits for validation on main and scopes write access', ()
     assert.match(releaseWorkflow, /^  release:$/m);
     assert.match(releaseWorkflow, /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
     assert.match(releaseWorkflow, /needs: validate/);
-    assert.match(releaseWorkflow, /googleapis\/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7/);
-    assert.match(releaseWorkflow, /contents: write[\s\S]*issues: write[\s\S]*pull-requests: write/);
-    assert.match(releaseWorkflow, /token: \$\{\{ secrets\.RELEASE_PLEASE_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
+    assert.match(releaseWorkflow, /reusable-release-please\.yml@495bb9b377719414123af8c329b02aeff58ab440 # 0\.2\.0/);
+    assert.match(releaseWorkflow, /permissions:\n      contents: read/);
+    assert.match(releaseWorkflow, /expected-sha: \$\{\{ github\.sha \}\}/);
+    assert.match(releaseWorkflow, /app-client-id: \$\{\{ vars\.RELEASE_PLEASE_APP_CLIENT_ID \}\}/);
+    assert.match(releaseWorkflow, /app-private-key: \$\{\{ secrets\.RELEASE_PLEASE_APP_PRIVATE_KEY \}\}/);
+    assert.doesNotMatch(releaseWorkflow, /googleapis\/release-please-action|RELEASE_PLEASE_TOKEN|GITHUB_TOKEN/);
 });
 
 function componentRefs(content) {

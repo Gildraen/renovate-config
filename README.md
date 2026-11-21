@@ -75,11 +75,12 @@ GitHub Release and the tag. New tags omit `v`; existing `v` tags remain valid
 and this workflow never renames or deletes them. Published tags should not be
 moved or replaced. A preset release does not require a new DX Feature release.
 
-Release Please uses `GITHUB_TOKEN` by default, which cannot create pull requests
-unless the repository setting permits it. Otherwise configure a repository
-secret named `RELEASE_PLEASE_TOKEN` with a fine-grained token limited to this
-repository and contents, issues and pull-request write access. The workflow does
-not approve pull requests.
+Release Please runs through the shared workflow in `Gildraen/ci-workflows`.
+Install the Release Please GitHub App on this repository with Contents, Issues,
+and Pull requests write permissions. Configure repository variable
+`RELEASE_PLEASE_APP_CLIENT_ID` and repository Actions secret
+`RELEASE_PLEASE_APP_PRIVATE_KEY`. The workflow mints a repository-scoped token
+for each release run; it does not approve pull requests.
 
 ## Development
 
