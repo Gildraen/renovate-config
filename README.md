@@ -69,7 +69,8 @@ Consumers pin the shared preset to a published Git tag in `renovate.json`. A
 pinned consumer stays on that snapshot when `main` changes. Renovate can propose
 a newer stable tag for a pinned preset.
 
-Starting with `1.0.0`, `default.json` is the stable public preset contract.
+The `1.0.0` release establishes `default.json` as the stable public preset
+contract.
 Backward-compatible changes use patch or minor versions; changes that break
 existing consumer behavior require a major version. Consumers remain pinned to
 their selected tag until Renovate updates their `extends` reference.
