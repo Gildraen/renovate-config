@@ -1,4 +1,4 @@
 [submodule ".devcontainer/components/agents"]
 	path = .devcontainer/components/agents
 	url = https://github.com/Gildraen/dx-agents.git
-	branch = v0.0.0
+	branch = 0.3.0
