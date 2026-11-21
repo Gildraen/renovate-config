@@ -58,13 +58,13 @@ test('stable component rules cover both gitlinks and installer pairs', () => {
         candidate.matchDepTypes?.includes('github-taskfile'))?.pinDigests, true);
 });
 
-test('release config uses the current baseline and unprefixed stable tags', () => {
+test('release config uses stable versions and unprefixed tags', () => {
     assert.equal(releaseConfig['include-v-in-tag'], false);
     assert.equal(releaseConfig['include-component-in-tag'], false);
     assert.equal(releaseConfig['bootstrap-sha'], '4a562942e4e7fc1bfe16e9f328893b66a6e5e160');
     assert.equal(releaseConfig.packages['.']['release-type'], 'simple');
     assert.equal(releaseConfig.packages['.']['version-file'], 'version.txt');
-    assert.equal(releaseManifest['.'], '0.1.0');
+    assert.match(releaseManifest['.'], /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
     assert.equal(readFileSync(new URL('../version.txt', import.meta.url), 'utf8').trim(), releaseManifest['.']);
 });
 
