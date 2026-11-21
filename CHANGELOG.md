@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/Gildraen/renovate-config/compare/0.2.0...1.0.0) (2026-11-21)
+
+
+### Documentation
+
+* clarify stable preset release ([45be221](https://github.com/Gildraen/renovate-config/commit/45be22121cd58178f12b86c7268a9c9983b782dc))
+
 ## [0.2.0](https://github.com/Gildraen/renovate-config/compare/0.1.0...0.2.0) (2026-11-21)
 
 
