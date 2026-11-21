@@ -18,7 +18,7 @@
         ".devcontainer/components/tools"
       ],
       "versioning": "semver",
-      "allowedVersions": "/^v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/",
+      "allowedVersions": "/^v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/",
       "groupName": "Fixed component pins"
     },
     {
@@ -44,7 +44,7 @@
       "description": "Bump annotated GitHub component tag/SHA pairs in install scripts.",
       "managerFilePatterns": ["/(^|/)install\\.sh$/"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>github-tags) depName=(?<depName>[^ ]+) packageName=(?<packageName>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)\\n(?<versionPrefix>[A-Za-z0-9_]+_version=\")(?<currentValue>v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*))(?<versionJoin>\"\\n[A-Za-z0-9_]+_commit=\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\")"
+        "# renovate: datasource=(?<datasource>github-tags) depName=(?<depName>[^ ]+) packageName=(?<packageName>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)\\n(?<versionPrefix>[A-Za-z0-9_]+_version=\")(?<currentValue>v?(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*))(?<versionJoin>\"\\n[A-Za-z0-9_]+_commit=\")(?<currentDigest>[0-9a-f]{40})(?<pairSuffix>\")"
       ],
       "depTypeTemplate": "dx-component",
       "datasourceTemplate": "{{{datasource}}}",
