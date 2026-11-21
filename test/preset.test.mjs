@@ -72,7 +72,7 @@ test('release workflow waits for validation on main and scopes write access', ()
     assert.match(releaseWorkflow, /^  release:$/m);
     assert.match(releaseWorkflow, /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
     assert.match(releaseWorkflow, /needs: validate/);
-    assert.match(releaseWorkflow, /reusable-release-please\.yml@495bb9b377719414123af8c329b02aeff58ab440 # 0\.2\.0/);
+    assert.match(releaseWorkflow, /reusable-release-please\.yml@[0-9a-f]{40} # 0\.2\.0/);
     assert.match(releaseWorkflow, /permissions:\n      contents: read/);
     assert.match(releaseWorkflow, /expected-sha: \$\{\{ github\.sha \}\}/);
     assert.match(releaseWorkflow, /app-client-id: \$\{\{ vars\.RELEASE_PLEASE_APP_CLIENT_ID \}\}/);
