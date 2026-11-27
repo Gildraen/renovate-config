@@ -2,9 +2,22 @@
 
 Shared Renovate configuration for GitHub repositories. The preset provides
 recommended rules, GitHub Actions digest pinning, Dev Container updates and
-updates to DX component pins, Remote Taskfile references and GitHub MCP images
-in `dx-mcp` launchers. Remote Taskfile references retain their owner/repository
-identity, so the same manager works across GitHub organizations.
+updates to DX component pins, Remote Taskfile references, GitHub MCP images in
+`dx-mcp` launchers, and annotated actionlint CLI versions in GitHub workflows.
+Remote Taskfile references retain their owner/repository identity, so the same
+manager works across GitHub organizations.
+
+Pin the actionlint CLI version used by a workflow with this annotation:
+
+```yaml
+      - uses: raven-actions/actionlint@<action-commit-sha> # <action-version>
+        with:
+          # renovate: datasource=github-releases depName=rhysd/actionlint
+          version: <actionlint-version>
+```
+
+Renovate updates the stable SemVer `version` from GitHub Releases. The action's
+own GitHub reference remains covered by the native GitHub Actions manager.
 
 Native HTTP Remote Taskfile includes use:
 

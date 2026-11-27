@@ -14,6 +14,8 @@ function managerFor(file) {
 const taskManager = managerFor('Taskfile.yaml');
 const mcpManager = managerFor('bin/dx-mcp');
 const componentManager = managerFor('.devcontainer/src/dx/install.sh');
+const actionlintManager = preset.customManagers.find((manager) =>
+    manager.description.includes('actionlint CLI versions'));
 
 test('managers select supported files', () => {
     for (const file of ['Taskfile.yml', 'Taskfile.yaml', 'nested/Taskfile.yml']) {
@@ -191,6 +193,37 @@ test('SHA-pinned Taskfile URLs retain a SemVer tag for Renovate', () => {
         assert.deepEqual(taskManager.matchStrings.flatMap((pattern) =>
             [...invalidUrl.matchAll(new RegExp(pattern, 'g'))]), [], invalidUrl);
     }
+});
+
+test('annotated actionlint CLI versions are shared across workflow files', () => {
+    assert.ok(actionlintManager);
+    assert.equal(actionlintManager.datasourceTemplate, '{{{datasource}}}');
+    assert.equal(actionlintManager.packageNameTemplate, '{{{depName}}}');
+    assert.equal(actionlintManager.versioningTemplate, 'semver');
+    const filePattern = new RegExp(actionlintManager.managerFilePatterns[0].slice(1, -1));
+    assert.ok(filePattern.test('.github/workflows/validate.yml'));
+    assert.ok(!filePattern.test('nested/.github/workflows/validate.yml'));
+
+    const workflow = [
+        'name: validate',
+        'jobs:',
+        '  lint:',
+        '    steps:',
+        '      - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0',
+        '        with:',
+        '          # renovate: datasource=github-releases depName=rhysd/actionlint',
+        '          version: 1.7.12',
+    ].join('\n');
+    const match = new RegExp(actionlintManager.matchStrings[0]).exec(workflow);
+    assert.deepEqual(Object.fromEntries(Object.entries(match?.groups ?? {})), {
+        datasource: 'github-releases',
+        depName: 'rhysd/actionlint',
+        currentValue: '1.7.12',
+    });
+    assert.equal(
+        new RegExp(actionlintManager.matchStrings[0]).test(workflow.replace('depName=rhysd/actionlint', 'depName=example/other-tool')),
+        false,
+    );
 });
 
 test('MCP image extraction retains its annotation and version contract', () => {
