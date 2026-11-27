@@ -63,6 +63,17 @@
       "versioningTemplate": "semver",
       "depTypeTemplate": "github-taskfile",
       "autoReplaceStringTemplate": "{{{urlPrefix}}}{{{newDigest}}}{{{fileSuffix}}}{{{tagPrefix}}}{{{newValue}}}{{{trailer}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Update actionlint CLI versions in annotated GitHub Actions workflows.",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>rhysd/actionlint)\\n\\s+version: (?<currentValue>(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*))"
+      ],
+      "datasourceTemplate": "{{{datasource}}}",
+      "packageNameTemplate": "{{{depName}}}",
+      "versioningTemplate": "semver"
     }
   ]
 }
