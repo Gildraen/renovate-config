@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Gildraen/renovate-config/compare/1.0.0...1.1.0) (2026-11-27)
+
+
+### Features
+
+* share actionlint CLI version manager ([#36](https://github.com/Gildraen/renovate-config/issues/36)) ([83fef97](https://github.com/Gildraen/renovate-config/commit/83fef979d1bce40f79182f8f6d9c6c51540dabad))
+
 ## [1.0.0](https://github.com/Gildraen/renovate-config/compare/0.2.0...1.0.0) (2026-11-21)
 
 
